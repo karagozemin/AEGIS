@@ -1,10 +1,14 @@
-import { http, createConfig } from "wagmi";
+import { http } from "wagmi";
 import { arbitrumSepolia } from "wagmi/chains";
 import { getDefaultConfig } from "@rainbow-me/rainbowkit";
 
+// WalletConnect projectId - get yours at https://cloud.walletconnect.com
+// For development, we use a placeholder that allows basic functionality
+const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "development_placeholder_id";
+
 export const config = getDefaultConfig({
   appName: "Aegis Prime",
-  projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "",
+  projectId,
   chains: [arbitrumSepolia],
   transports: {
     [arbitrumSepolia.id]: http(
