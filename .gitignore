@@ -1,0 +1,43 @@
+# Dependencies
+node_modules
+.pnpm-store
+
+# Next.js
+.next
+out
+
+# Build
+dist
+build
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Turbo
+.turbo
+
+# Foundry
+contracts/cache
+contracts/out
+contracts/broadcast
+
+# TEE App
+tee-app/__pycache__
+tee-app/*.pyc
+tee-app/.venv
+
+# Logs
+*.log
+npm-debug.log*

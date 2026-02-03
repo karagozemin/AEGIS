@@ -1,0 +1,22 @@
+{
+  "assets": [
+    {
+      "value": 2500000,
+      "volatility": 0.15,
+      "asset_id": "real-estate-commercial-1"
+    },
+    {
+      "value": 1000000,
+      "volatility": 0.08,
+      "asset_id": "bond-portfolio-aaa"
+    },
+    {
+      "value": 750000,
+      "volatility": 0.22,
+      "asset_id": "mixed-fund-growth"
+    }
+  ],
+  "iterations": 5000,
+  "owner": "0x1234567890123456789012345678901234567890",
+  "task_id": "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+}
