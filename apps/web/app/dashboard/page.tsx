@@ -193,7 +193,8 @@ export default function DashboardPage() {
                       <RiskScoreCard asset={asset} />
                       <button
                         onClick={() => handleDeleteAsset(asset.id)}
-                        className="absolute top-4 right-4 p-2 rounded-lg bg-red-500/10 text-red-400 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/20"
+                        className="absolute bottom-4 right-4 p-2 rounded-lg bg-red-500/10 text-red-400 opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500/20 hover:scale-110 z-10"
+                        title="Delete asset"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
