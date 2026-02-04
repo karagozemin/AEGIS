@@ -107,6 +107,7 @@
     rgba(15, 150, 156, 0.1) 0%,
     transparent 50%
   );
+  pointer-events: none; /* Allow clicks to pass through */
 }
 
 .card-industrial:hover::before {

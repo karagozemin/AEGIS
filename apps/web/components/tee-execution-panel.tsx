@@ -37,8 +37,13 @@ export function TEEExecutionPanel({ assets, onComputeComplete }: TEEExecutionPan
   const { grantAccess, processData, isReady } = useDataProtector();
 
   const protectedAssets = assets.filter((a) => a.protectedDataAddress);
+  
+  // Debug logging
+  console.log('[TEE Panel] Render - isReady:', isReady, 'assets:', assets.length, 'protectedAssets:', protectedAssets.length, 'executionStep:', executionStep);
 
   const executeComputation = async () => {
+    console.log('[TEE] Execute clicked. isReady:', isReady, 'protectedAssets:', protectedAssets.length);
+    
     if (protectedAssets.length === 0) return;
     if (!isReady) {
       setErrorMessage("Please connect your wallet first");
@@ -224,7 +229,11 @@ export function TEEExecutionPanel({ assets, onComputeComplete }: TEEExecutionPan
           {/* Execute Button */}
           <Button
             onClick={executeComputation}
-            disabled={executionStep !== "idle" && executionStep !== "error" || protectedAssets.length === 0 || !isReady}
+            disabled={
+              protectedAssets.length === 0 || 
+              !isReady || 
+              (executionStep !== "idle" && executionStep !== "error")
+            }
             className="w-full bg-aegis-cyan hover:bg-aegis-cyan-light"
           >
             {executionStep === "idle" || executionStep === "error" ? (
