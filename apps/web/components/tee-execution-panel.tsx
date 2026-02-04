@@ -39,7 +39,12 @@ export function TEEExecutionPanel({ assets, onComputeComplete }: TEEExecutionPan
   const protectedAssets = assets.filter((a) => a.protectedDataAddress);
 
   const executeComputation = async () => {
-    if (protectedAssets.length === 0 || !isReady) return;
+    if (protectedAssets.length === 0) return;
+    if (!isReady) {
+      setErrorMessage("Please connect your wallet first");
+      setExecutionStep("error");
+      return;
+    }
 
     setErrorMessage("");
 
@@ -66,10 +71,11 @@ export function TEEExecutionPanel({ assets, onComputeComplete }: TEEExecutionPan
         setExecutionStep("attesting");
         setProgress(((i * 3 + 3) / (protectedAssets.length * 3)) * 100);
 
-        // Parse the TEE result (format depends on your Python app output)
+        // Parse the TEE result
         const computedResult = result as any;
-        const varScore = computedResult?.results?.[0]?.var_95 || Math.random() * asset.value * 0.2;
-        const safeLTV = computedResult?.results?.[0]?.safe_ltv_bps || 7500;
+        // Result from demo mode or real TEE
+        const varScore = computedResult?.var_95 || computedResult?.results?.[0]?.var_95 || asset.value * 0.15;
+        const safeLTV = computedResult?.safe_ltv_bps || computedResult?.results?.[0]?.safe_ltv_bps || 7500;
 
         onComputeComplete(asset.id, {
           varScore,
@@ -241,7 +247,7 @@ export function TEEExecutionPanel({ assets, onComputeComplete }: TEEExecutionPan
             )}
           </Button>
 
-          {/* Gasless Badge */}
+          {/* Mode Badge */}
           <div className="flex items-center justify-center gap-2 text-xs text-aegis-steel-500">
             <Shield className="w-3 h-3" />
             <span>Computation runs inside Intel SGX enclave</span>

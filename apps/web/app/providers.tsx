@@ -20,10 +20,19 @@ export function Providers({ children }: { children: React.ReactNode }) {
       })
   );
 
-  // Prevent SSR hydration issues with WalletConnect
+  // Prevent SSR - WalletConnect uses indexedDB which doesn't exist on server
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Don't render anything on server - prevents indexedDB errors
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-aegis-steel-950 flex items-center justify-center">
+        <div className="animate-pulse text-aegis-cyan">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <WagmiProvider config={config}>
@@ -38,7 +47,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           })}
           modalSize="compact"
         >
-          {mounted ? children : null}
+          {children}
         </RainbowKitProvider>
       </QueryClientProvider>
     </WagmiProvider>

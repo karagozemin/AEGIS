@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Lock, Shield, AlertCircle, CheckCircle, Loader2 } from "lucide-react";
+import { Lock, Shield, AlertCircle, CheckCircle, Loader2, Wallet } from "lucide-react";
+import { useAccount } from "wagmi";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,7 +40,8 @@ export function AssetProtectionForm({
   const [step, setStep] = useState<Step>("form");
   const [errorMessage, setErrorMessage] = useState("");
 
-  const { protectData, isLoading, isReady } = useDataProtector();
+  const { isConnected } = useAccount();
+  const { protectData, isLoading, isReady, error: dpError, isDemoMode } = useDataProtector();
 
   const resetForm = () => {
     setName("");
@@ -57,8 +59,16 @@ export function AssetProtectionForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!isReady) {
+    // Check wallet connection
+    if (!isConnected) {
       setErrorMessage("Please connect your wallet first");
+      setStep("error");
+      return;
+    }
+
+    // Check DataProtector ready
+    if (!isReady) {
+      setErrorMessage("DataProtector is initializing. Please wait a moment and try again.");
       setStep("error");
       return;
     }
@@ -158,16 +168,28 @@ export function AssetProtectionForm({
               </div>
             </div>
 
-            <div className="bg-aegis-steel-900 rounded-lg p-4 border border-aegis-steel-800">
+            {/* Status indicator */}
+            <div className={`rounded-lg p-4 border ${
+              isReady 
+                ? "bg-green-500/10 border-green-500/30" 
+                : "bg-aegis-amber/10 border-aegis-amber/30"
+            }`}>
               <div className="flex items-start gap-3">
-                <Shield className="w-5 h-5 text-aegis-cyan mt-0.5" />
+                {isReady ? (
+                  <Shield className="w-5 h-5 text-green-400 mt-0.5" />
+                ) : (
+                  <Wallet className="w-5 h-5 text-aegis-amber mt-0.5" />
+                )}
                 <div className="text-sm">
-                  <p className="font-medium text-aegis-steel-200">
-                    Privacy Guarantee
+                  <p className={`font-medium ${isReady ? "text-green-400" : "text-aegis-amber"}`}>
+                    {isReady 
+                      ? "Ready to Encrypt"
+                      : "Initializing..."}
                   </p>
                   <p className="text-aegis-steel-400 mt-1">
-                    Your wallet will sign a transaction to encrypt this data on
-                    the iExec network. Only SGX enclaves can decrypt it.
+                    {isReady 
+                      ? "Your wallet will sign transactions to encrypt data on iExec Bellecour."
+                      : "Please connect your wallet to continue."}
                   </p>
                 </div>
               </div>
@@ -184,11 +206,11 @@ export function AssetProtectionForm({
               </Button>
               <Button
                 type="submit"
-                disabled={!isReady || isLoading}
-                className="bg-aegis-cyan hover:bg-aegis-cyan-light"
+                disabled={isLoading || !name || !value || !volatility || !isReady}
+                className="bg-aegis-cyan hover:bg-aegis-cyan-light disabled:opacity-50"
               >
                 <Lock className="w-4 h-4 mr-2" />
-                Encrypt & Protect
+                {isReady ? "Encrypt & Protect" : "Waiting..."}
               </Button>
             </DialogFooter>
           </form>

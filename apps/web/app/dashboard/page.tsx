@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Shield, Plus, RefreshCw, Mail, Trash2 } from "lucide-react";
+import { Shield, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAccount } from "wagmi";
 import Link from "next/link";
@@ -12,10 +12,10 @@ import { AssetProtectionForm } from "@/components/asset-protection-form";
 import { RiskScoreCard } from "@/components/risk-score-card";
 import { TEEExecutionPanel } from "@/components/tee-execution-panel";
 import { PortfolioOverview } from "@/components/portfolio-overview";
-import { useAssets, type Asset } from "@/hooks/useAssets";
+import { useAssets } from "@/hooks/useAssets";
 
 export default function DashboardPage() {
-  const { isConnected, address } = useAccount();
+  const { isConnected } = useAccount();
   const { assets, addAsset, updateAsset, removeAsset, isLoading } = useAssets();
   const [isAddingAsset, setIsAddingAsset] = useState(false);
 

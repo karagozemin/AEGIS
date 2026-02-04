@@ -1,9 +1,7 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
-import { useWalletClient } from "wagmi";
-
-const IEXEC_APP_ADDRESS = process.env.NEXT_PUBLIC_IEXEC_APP_ADDRESS || "";
+import { useState, useCallback } from "react";
+import { useAccount } from "wagmi";
 
 export interface ProtectedAsset {
   address: string;
@@ -12,86 +10,54 @@ export interface ProtectedAsset {
   creationTimestamp: number;
 }
 
-// Custom provider adapter for iExec SDK
-function createIExecProvider(walletClient: any) {
-  return {
-    request: async ({ method, params }: { method: string; params?: any[] }) => {
-      if (method === "eth_requestAccounts" || method === "eth_accounts") {
-        return [walletClient.account.address];
-      }
-      if (method === "eth_chainId") {
-        return `0x${walletClient.chain.id.toString(16)}`;
-      }
-      if (method === "personal_sign" || method === "eth_sign") {
-        const [message, address] = params || [];
-        return walletClient.signMessage({ message, account: address });
-      }
-      if (method === "eth_signTypedData_v4") {
-        const [address, typedData] = params || [];
-        const parsed = typeof typedData === "string" ? JSON.parse(typedData) : typedData;
-        return walletClient.signTypedData({
-          account: address,
-          domain: parsed.domain,
-          types: parsed.types,
-          primaryType: parsed.primaryType,
-          message: parsed.message,
-        });
-      }
-      // Forward other requests to the underlying transport
-      return walletClient.transport.request({ method, params });
-    },
-  };
-}
-
+/**
+ * Hook for iExec DataProtector operations via Backend API
+ * This bypasses MetaMask SES lockdown by running iExec SDK on the server
+ */
 export function useDataProtector() {
-  const { data: walletClient } = useWalletClient();
+  const { address, isConnected } = useAccount();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [dataProtector, setDataProtector] = useState<any>(null);
-
-  // Dynamically load DataProtector on client side only
-  useEffect(() => {
-    if (!walletClient) {
-      setDataProtector(null);
-      return;
-    }
-
-    const initDataProtector = async () => {
-      try {
-        const { IExecDataProtector } = await import("@iexec/dataprotector");
-        const provider = createIExecProvider(walletClient);
-        const dp = new IExecDataProtector(provider as any);
-        setDataProtector(dp);
-      } catch (err) {
-        console.error("Failed to create DataProtector:", err);
-        setDataProtector(null);
-      }
-    };
-
-    initDataProtector();
-  }, [walletClient]);
 
   const protectData = useCallback(
     async (data: { value: number; volatility: number }, name: string) => {
-      if (!dataProtector) {
-        throw new Error("DataProtector not initialized");
+      if (!isConnected || !address) {
+        throw new Error("Wallet not connected. Please connect your wallet.");
       }
 
       setIsLoading(true);
       setError(null);
 
       try {
-        const protectedData = await dataProtector.protectData({
-          data: {
-            assetValue: Math.round(data.value * 100), // Store as cents
-            assetVolatility: Math.round(data.volatility * 10000), // Store as basis points
-          },
-          name,
+        console.log("[iExec API] Protecting data:", { data, name });
+        
+        const response = await fetch('/api/iexec/protect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            assetValue: data.value,
+            assetVolatility: data.volatility,
+            name,
+            userAddress: address,
+          }),
         });
 
-        return protectedData;
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to protect data');
+        }
+
+        const result = await response.json();
+        console.log("[iExec API] Data protected:", result);
+        
+        // Ensure address is a string (handle if it's an object)
+        if (result.address && typeof result.address === 'object') {
+          result.address = result.address.cid || result.address.address || JSON.stringify(result.address);
+        }
+        
+        return result;
       } catch (err: any) {
-        console.error("Protect data failed:", err);
+        console.error("[iExec API] Protect data failed:", err);
         const message = err?.message || "Failed to protect data";
         setError(message);
         throw new Error(message);
@@ -99,29 +65,41 @@ export function useDataProtector() {
         setIsLoading(false);
       }
     },
-    [dataProtector]
+    [isConnected, address]
   );
 
   const grantAccess = useCallback(
     async (protectedDataAddress: string) => {
-      if (!dataProtector) {
-        throw new Error("DataProtector not initialized");
+      if (!isConnected || !address) {
+        throw new Error("Wallet not connected");
       }
 
       setIsLoading(true);
       setError(null);
 
       try {
-        const result = await dataProtector.grantAccess({
-          protectedData: protectedDataAddress,
-          authorizedApp: IEXEC_APP_ADDRESS,
-          authorizedUser: "0x0000000000000000000000000000000000000000",
-          numberOfAccess: 1,
+        console.log("[iExec API] Granting access for:", protectedDataAddress);
+        
+        const response = await fetch('/api/iexec/grant-access', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            protectedDataAddress,
+            userAddress: address,
+          }),
         });
 
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to grant access');
+        }
+
+        const result = await response.json();
+        console.log("[iExec API] Access granted:", result);
+        
         return result;
       } catch (err: any) {
-        console.error("Grant access failed:", err);
+        console.error("[iExec API] Grant access failed:", err);
         const message = err?.message || "Failed to grant access";
         setError(message);
         throw new Error(message);
@@ -129,28 +107,41 @@ export function useDataProtector() {
         setIsLoading(false);
       }
     },
-    [dataProtector]
+    [isConnected, address]
   );
 
   const processData = useCallback(
     async (protectedDataAddress: string) => {
-      if (!dataProtector) {
-        throw new Error("DataProtector not initialized");
+      if (!isConnected || !address) {
+        throw new Error("Wallet not connected");
       }
 
       setIsLoading(true);
       setError(null);
 
       try {
-        const { taskId, result } = await dataProtector.processProtectedData({
-          protectedData: protectedDataAddress,
-          app: IEXEC_APP_ADDRESS,
-          maxPrice: 0,
+        console.log("[iExec API] Processing data in TEE:", protectedDataAddress);
+        
+        const response = await fetch('/api/iexec/process', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            protectedDataAddress,
+            userAddress: address,
+          }),
         });
 
-        return { taskId, result };
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to process data');
+        }
+
+        const result = await response.json();
+        console.log("[iExec API] Processing complete:", result);
+        
+        return { taskId: result.taskId, result: result.deal };
       } catch (err: any) {
-        console.error("Process data failed:", err);
+        console.error("[iExec API] Process data failed:", err);
         const message = err?.message || "Failed to process data";
         setError(message);
         throw new Error(message);
@@ -158,11 +149,11 @@ export function useDataProtector() {
         setIsLoading(false);
       }
     },
-    [dataProtector]
+    [isConnected, address]
   );
 
   const fetchMyProtectedData = useCallback(async () => {
-    if (!dataProtector || !walletClient?.account?.address) {
+    if (!isConnected || !address) {
       return [];
     }
 
@@ -170,20 +161,15 @@ export function useDataProtector() {
     setError(null);
 
     try {
-      const data = await dataProtector.fetchProtectedData({
-        owner: walletClient.account.address,
-      });
-
-      return data;
+      console.log("[iExec API] Fetching protected data not yet implemented");
+      return [];
     } catch (err: any) {
-      console.error("Fetch protected data failed:", err);
-      const message = err?.message || "Failed to fetch protected data";
-      setError(message);
+      console.error("[iExec API] Fetch protected data failed:", err);
       return [];
     } finally {
       setIsLoading(false);
     }
-  }, [dataProtector, walletClient]);
+  }, [isConnected, address]);
 
   return {
     protectData,
@@ -192,6 +178,7 @@ export function useDataProtector() {
     fetchMyProtectedData,
     isLoading,
     error,
-    isReady: !!dataProtector,
+    isReady: isConnected, // Ready when wallet is connected (no SDK initialization needed)
+    isDemoMode: false,
   };
 }

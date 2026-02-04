@@ -33,6 +33,13 @@ export function RiskScoreCard({ asset }: RiskScoreCardProps) {
     : null;
   const riskColor = riskLevel ? getRiskColor(riskLevel) : "";
 
+  // Ensure protectedDataAddress is a string (handle if it's an object)
+  const addressStr = asset.protectedDataAddress 
+    ? (typeof asset.protectedDataAddress === 'string' 
+        ? asset.protectedDataAddress 
+        : (asset.protectedDataAddress as any).cid || (asset.protectedDataAddress as any).address || JSON.stringify(asset.protectedDataAddress))
+    : null;
+
   return (
     <Card className="overflow-hidden">
       <CardHeader className="pb-3">
@@ -40,8 +47,8 @@ export function RiskScoreCard({ asset }: RiskScoreCardProps) {
           <div>
             <CardTitle className="text-lg">{asset.name}</CardTitle>
             <CardDescription className="font-mono text-xs mt-1">
-              {asset.protectedDataAddress
-                ? `${asset.protectedDataAddress.slice(0, 10)}...${asset.protectedDataAddress.slice(-6)}`
+              {addressStr
+                ? `${addressStr.slice(0, 10)}...${addressStr.slice(-6)}`
                 : asset.id.slice(0, 16)}
             </CardDescription>
           </div>
@@ -65,7 +72,7 @@ export function RiskScoreCard({ asset }: RiskScoreCardProps) {
         </div>
 
         {/* Protected Data Info */}
-        {asset.protectedDataAddress && asset.status !== "computed" && (
+        {addressStr && asset.status !== "computed" && (
           <div className="flex items-center gap-2 text-xs text-aegis-cyan bg-aegis-cyan/5 rounded-lg p-3">
             <Lock className="w-4 h-4" />
             <span>Data encrypted on iExec</span>
