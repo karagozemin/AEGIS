@@ -590,6 +590,100 @@ uint256 public constant SCORE_EXPIRY = 7 days;
 
 ---
 
+## 🏗️ Implementation Status & Roadmap
+
+### ✅ **Currently Deployed (v1.0 - Hackathon Submission)**
+
+| Component | Status | Details |
+|-----------|--------|---------|
+| **Smart Contract** | ✅ Live | Deployed on Arbitrum Sepolia |
+| **Data Encryption** | ✅ Real | iExec DataProtectorCore (on-chain IPFS) |
+| **VaR Algorithm** | ✅ Production | Monte Carlo 5000 iterations (Python/NumPy) |
+| **Frontend/Backend** | ✅ Live | Next.js 14 + API Routes |
+| **Account Abstraction** | ✅ Ready | Pimlico Paymaster integrated |
+| **TEE Execution** | ⚠️ Hybrid | Deterministic simulation (see below) |
+
+### ⚠️ **Hybrid Mode Explanation**
+
+**What's Real:**
+- ✅ Asset data encryption (iExec DataProtector)
+- ✅ Protected data stored on IPFS with on-chain registry
+- ✅ VaR computation algorithm (production-ready Python)
+- ✅ Smart contract attestation flow
+
+**What's Simulated:**
+- ⚠️ SGX enclave execution (deterministic based on input hash)
+- ⚠️ TEE attestation (requires SCONE framework setup)
+
+**Why Hybrid?**
+- SCONE account approval pending (required for TEE image building)
+- All infrastructure ready: Docker image built, iExec apps deployed
+- Easy migration: only `sconify.sh` + redeploy needed
+
+### 🚀 **Real TEE Migration Plan (v2.0)**
+
+**Status:** 📋 SCONE account application submitted
+
+**When approved, migration takes ~2 hours:**
+
+```bash
+# Step 1: Sconify Docker image (wrap with SCONE framework)
+cd tee-app
+./sconify.sh  # Generates mrenclave for SGX attestation
+
+# Step 2: Push TEE image to Docker Hub
+docker push karagozemin/tee-scone-aegis-var-engine:1.0.0
+
+# Step 3: Redeploy iExec app with mrenclave metadata
+iexec app deploy --chain arbitrum-sepolia-testnet
+
+# Step 4: Update frontend (remove hybrid simulation)
+# Backend API already uses IExecDataProtectorCore ✅
+# Only need to remove deterministic fallback
+
+# Step 5: Test end-to-end real TEE execution
+# - Data encrypted ✅
+# - TEE task submitted to iExec network
+# - SGX enclave executes Python VaR computation
+# - Result returned with cryptographic TEE attestation
+# - Verify mrenclave matches deployed app
+```
+
+**After migration:**
+- ✅ 100% real TEE execution in Intel SGX
+- ✅ Cryptographic proof of computation (mrenclave)
+- ✅ Full iExec DataProtector workflow
+- ✅ On-chain attestation with verified results
+
+**No major code changes needed:**
+- ✅ Backend API routes already use `IExecDataProtectorCore`
+- ✅ Frontend hooks already structured for real flow
+- ✅ Smart contract already accepts TEE task IDs
+- ✅ Only toggle: remove hybrid mode flag in `/api/iexec/process`
+
+### 📊 **Migration Checklist**
+
+**Prerequisites:**
+- [ ] SCONE account approved (pending)
+- [ ] Docker running locally
+- [x] Enclave signing key generated (`enclave-key.pem`)
+- [x] iExec CLI configured
+- [x] Apps deployed to Arbitrum Sepolia & Bellecour
+- [x] Docker image built and pushed
+
+**Migration Steps (2 hours):**
+1. [ ] Run `./tee-app/sconify.sh` → Get mrenclave
+2. [ ] Update `tee-app/iexec.json` with mrenclave metadata
+3. [ ] Redeploy: `iexec app deploy --chain arbitrum-sepolia-testnet`
+4. [ ] Update `.env`: `NEXT_PUBLIC_IEXEC_APP_ADDRESS` with new address
+5. [ ] Remove hybrid simulation in `apps/web/app/api/iexec/process/route.ts`
+6. [ ] Test: Encrypt → Grant → Process → Verify attestation
+7. [ ] Update README status: ⚠️ Hybrid → ✅ Real TEE
+
+**Estimated completion:** Within 48 hours of SCONE approval
+
+---
+
 ## ❓ FAQ
 
 ### Q: Is my data really private?
