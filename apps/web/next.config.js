@@ -5,6 +5,11 @@ const webpack = require('webpack');
 const nextConfig = {
   reactStrictMode: true,
   
+  // Prevent bundling these packages on server-side
+  experimental: {
+    serverComponentsExternalPackages: ['@iexec/dataprotector', 'iexec'],
+  },
+  
   webpack: (config, { isServer }) => {
     if (!isServer) {
       // Client-side configuration
