@@ -65,11 +65,11 @@ export default function Home() {
             <Image
               src="/aegis-logo.png"
               alt="Aegis Prime Logo"
-              width={40}
-              height={40}
-              className="w-10 h-10 transition-transform group-hover:scale-110"
+              width={56}
+              height={56}
+              className="w-14 h-14 transition-transform group-hover:scale-110"
             />
-            <span className="text-xl font-bold tracking-tight">
+            <span className="text-2xl font-bold tracking-tight">
               AEGIS<span className="text-aegis-cyan">PRIME</span>
             </span>
           </Link>

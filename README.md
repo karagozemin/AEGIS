@@ -1,14 +1,20 @@
-# 🛡️ Aegis Prime - Confidential RWA Risk Engine
+<div align="center">
+  <img src="./apps/web/public/aegis-logo.png" alt="Aegis Prime Logo" width="200" />
+  
+  # 🛡️ Aegis Prime - Confidential RWA Risk Engine
 
-> **Privacy-preserving Value-at-Risk computation for Real-World Assets using Intel SGX & iExec**
+  > **Privacy-preserving Value-at-Risk computation for Real-World Assets using Intel SGX & iExec**
 
-Built for the **iExec Hack4Privacy Hackathon** 🏆
+  Built for the **iExec Hack4Privacy Hackathon** 🏆
 
-[![Next.js](https://img.shields.io/badge/Next.js-14-black)](https://nextjs.org/)
-[![Solidity](https://img.shields.io/badge/Solidity-0.8.20-blue)](https://soliditylang.org/)
-[![iExec](https://img.shields.io/badge/iExec-DataProtector-yellow)](https://docs.iex.ec/)
-[![Arbitrum](https://img.shields.io/badge/Arbitrum-Sepolia-blue)](https://arbitrum.io/)
-[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
+  <p>
+    <a href="https://nextjs.org/"><img src="https://img.shields.io/badge/Next.js-14-black" alt="Next.js" /></a>
+    <a href="https://soliditylang.org/"><img src="https://img.shields.io/badge/Solidity-0.8.20-blue" alt="Solidity" /></a>
+    <a href="https://docs.iex.ec/"><img src="https://img.shields.io/badge/iExec-DataProtector-yellow" alt="iExec" /></a>
+    <a href="https://arbitrum.io/"><img src="https://img.shields.io/badge/Arbitrum-Sepolia-blue" alt="Arbitrum" /></a>
+    <img src="https://img.shields.io/badge/License-MIT-green" alt="License" />
+  </p>
+</div>
 
 ---
 

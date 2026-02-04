@@ -29,12 +29,14 @@ export const metadata: Metadata = {
   ],
   icons: {
     icon: [
+      { url: "/aegis-logo.png", sizes: "64x64", type: "image/png" },
       { url: "/aegis-logo.png", sizes: "32x32", type: "image/png" },
       { url: "/aegis-logo.png", sizes: "16x16", type: "image/png" },
     ],
     apple: [
       { url: "/aegis-logo.png", sizes: "180x180", type: "image/png" },
     ],
+    shortcut: ["/aegis-logo.png"],
   },
   openGraph: {
     title: "Aegis Prime | Confidential RWA Risk Engine",
