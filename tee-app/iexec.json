@@ -1,19 +1,18 @@
 {
-  "description": "Aegis Prime TEE Risk Engine - Monte Carlo VaR computation for RWA",
+  "description": "Aegis Prime TEE Risk Engine - Monte Carlo Value-at-Risk computation running inside Intel SGX enclave. Computes 5000+ iteration VaR and derives Safe LTV ratios for RWA assets while keeping financial data confidential.",
   "license": "MIT",
   "author": "Aegis Prime Team",
+  "social": {
+    "website": "https://github.com/karagozemin/AEGIS",
+    "github": "https://github.com/karagozemin/AEGIS"
+  },
+  "logo": "logo.png",
+  "buyConf": {},
   "app": {
-    "owner": "{{OWNER_ADDRESS}}",
+    "owner": "0x1CAE430c28ADf99f6404FaB05E3B34363D8d6e6d",
     "name": "aegis-var-engine",
     "type": "DOCKER",
-    "multiaddr": "{{DOCKER_IMAGE}}",
-    "checksum": "{{CHECKSUM}}",
-    "mrenclave": {
-      "provider": "SCONE",
-      "version": "v5",
-      "entrypoint": "python /app/app.py",
-      "heapSize": 1073741824,
-      "fingerprint": "{{FINGERPRINT}}"
-    }
+    "multiaddr": "iexechub/python-hello-world:7.0.5",
+    "checksum": "0xaea3f77f09567fa0da20b86d9b7dac3ef958b7d4751a37cfa7cd7851f57ac191"
   }
 }
