@@ -56,6 +56,125 @@ Traditional risk assessment requires sharing sensitive data with centralized par
 
 ---
 
+## 🧮 Why TEE for Math?
+
+### The Compute Gap Problem
+
+**On-chain computation is expensive and limited:**
+
+```solidity
+// ❌ This is IMPOSSIBLE on-chain
+function calculateVaR(uint256 value, uint256 volatility) public pure returns (uint256) {
+    // Generate 5000 random numbers
+    // Run Monte Carlo simulation
+    // Calculate percentiles
+    // Return VaR score
+}
+```
+
+**Why it fails:**
+- 💰 **Gas costs**: ~21,000 gas per operation → 5000 iterations = bankruptcy
+- ⏱️ **Block gas limit**: Maximum ~30M gas per block (Arbitrum) → math overflows
+- 🔢 **No floating-point**: Solidity only has integers → precision loss
+- 📊 **No statistics libraries**: No NumPy, no normal distribution, no percentile functions
+
+**Real numbers:**
+| Operation | On-chain Gas | Cost (@ 0.1 gwei) | Time |
+|-----------|-------------|-------------------|------|
+| 1 random number | ~20,000 | $0.002 | instant |
+| 5000 MC iterations | ~100M+ | $10+ | **FAILS** (exceeds block limit) |
+| Sort 5000 numbers | ~50M+ | $5+ | **FAILS** |
+
+### How iExec Solves This
+
+**TEE (Trusted Execution Environment) = Off-chain compute + On-chain trust**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    BLOCKCHAIN                               │
+│  ✅ Storage (cheap)                                         │
+│  ✅ Verification (cheap)                                    │
+│  ❌ Heavy computation (impossible)                          │
+└─────────────────────────────────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    iExec TEE                                │
+│  ✅ Heavy computation (Python + NumPy)                      │
+│  ✅ Intel SGX attestation (provable execution)             │
+│  ✅ Encrypted inputs/outputs                                │
+│  ✅ 5000+ iterations in seconds (not hours)                 │
+└─────────────────────────────────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    SMART CONTRACT                           │
+│  ✅ Stores attested result (32 bytes)                       │
+│  ✅ Verifies TEE signature                                  │
+│  ✅ Only ~100k gas for storage                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### The iExec Advantage
+
+**For Aegis Prime VaR Computation:**
+
+| Requirement | On-chain | iExec TEE |
+|-------------|----------|-----------|
+| **5000 Monte Carlo iterations** | ❌ Impossible | ✅ ~2 seconds |
+| **Normal distribution sampling** | ❌ No stdlib | ✅ NumPy |
+| **Floating-point precision** | ❌ Integer only | ✅ IEEE 754 |
+| **Sort 5000 numbers** | ❌ >50M gas | ✅ O(n log n) |
+| **Calculate percentiles** | ❌ No function | ✅ `np.percentile()` |
+| **Privacy of inputs** | ❌ Public | ✅ Encrypted |
+| **Cost** | 💸 $10+ (fails) | ✅ ~$0.01 |
+
+**Real-world impact:**
+```python
+# In TEE (Python + NumPy)
+import numpy as np
+
+def calculate_var(value, volatility, iterations=5000):
+    returns = np.random.normal(0, volatility, iterations)  # ✅ Fast
+    losses = value - (value * (1 + returns))
+    var_95 = np.percentile(losses, 95)  # ✅ Accurate
+    return var_95
+
+# Runtime: ~2 seconds
+# Cost: ~0.1 RLC (~$0.01)
+# Gas: Only for storing result (~100k gas)
+```
+
+### The "Compute Gap" iExec Fills
+
+```
+                    Blockchain Evolution
+                    
+Era 1: Bitcoin (2009)
+├─ Digital currency
+└─ Simple transactions
+
+Era 2: Ethereum (2015)
+├─ Smart contracts
+├─ DeFi primitives
+└─ ❌ Limited computation
+
+Era 3: iExec (2017-2026)  ← WE ARE HERE
+├─ Off-chain compute
+├─ TEE attestation
+├─ Privacy-preserving ML
+└─ ✅ Complex algorithms at scale
+
+Future: Verifiable AI + Blockchain
+├─ LLMs in TEE
+├─ On-chain AI agents
+└─ Fully autonomous DeFi
+```
+
+**Bottom line**: iExec makes complex math **economically viable** and **privacy-preserving** on blockchain.
+
+---
+
 ## 🏗️ Architecture
 
 ```
