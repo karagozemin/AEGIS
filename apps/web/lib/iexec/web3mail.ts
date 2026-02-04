@@ -1,11 +1,10 @@
 import { IExecWeb3mail, type Contact } from "@iexec/web3mail";
-import type { BrowserProvider } from "ethers";
 
 /**
  * Initialize Web3Mail with browser wallet
  */
-export function createWeb3Mail(provider: BrowserProvider) {
-  return new IExecWeb3mail(provider);
+export function createWeb3Mail(provider: unknown) {
+  return new IExecWeb3mail(provider as any);
 }
 
 /**
@@ -65,14 +64,14 @@ export async function sendVaRReport(
     </p>
   `;
 
-  const { taskId } = await web3mail.sendEmail({
+  const result = await web3mail.sendEmail({
     emailSubject: `[Aegis Prime] VaR Report - Asset ${report.assetId.slice(0, 8)}...`,
     emailContent,
-    protectedData: recipientAddress, // User's protected email address
+    protectedData: recipientAddress,
     contentType: "text/html",
-  });
+  } as any);
 
-  return taskId;
+  return (result as any).taskId || result;
 }
 
 /**

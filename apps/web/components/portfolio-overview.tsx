@@ -1,6 +1,6 @@
 "use client";
 
-import { TrendingUp, Shield, AlertTriangle, DollarSign } from "lucide-react";
+import { TrendingUp, Shield, AlertTriangle, DollarSign, Lock } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatCurrency, formatBps } from "@/lib/utils";
 
@@ -11,7 +11,7 @@ interface Asset {
   volatility: number;
   varScore: number | null;
   safeLTV: number | null;
-  status: "pending" | "computing" | "computed";
+  status: "pending" | "protected" | "computing" | "computed";
 }
 
 interface PortfolioOverviewProps {
@@ -21,6 +21,7 @@ interface PortfolioOverviewProps {
 export function PortfolioOverview({ assets }: PortfolioOverviewProps) {
   const totalValue = assets.reduce((sum, asset) => sum + asset.value, 0);
   const computedAssets = assets.filter((a) => a.status === "computed");
+  const protectedAssets = assets.filter((a) => a.status === "protected" || a.status === "computed");
   const totalVaR = computedAssets.reduce(
     (sum, asset) => sum + (asset.varScore || 0),
     0
@@ -30,7 +31,7 @@ export function PortfolioOverview({ assets }: PortfolioOverviewProps) {
       ? computedAssets.reduce((sum, asset) => sum + (asset.safeLTV || 0), 0) /
         computedAssets.length
       : 0;
-  const pendingCount = assets.filter((a) => a.status === "pending").length;
+  const pendingCount = assets.filter((a) => a.status === "pending" || a.status === "protected").length;
 
   const stats = [
     {
@@ -52,14 +53,20 @@ export function PortfolioOverview({ assets }: PortfolioOverviewProps) {
       color: avgLTV > 0 ? "text-aegis-cyan" : "text-aegis-steel-500",
     },
     {
-      label: "TEE Verified",
-      value: `${computedAssets.length}/${assets.length}`,
+      label: "Protected / Computed",
+      value: `${protectedAssets.length} / ${computedAssets.length}`,
       icon: Shield,
       color:
-        computedAssets.length === assets.length
+        computedAssets.length === assets.length && assets.length > 0
           ? "text-green-400"
-          : "text-aegis-amber",
-      subtext: pendingCount > 0 ? `${pendingCount} pending` : "All verified",
+          : protectedAssets.length > 0
+            ? "text-aegis-cyan"
+            : "text-aegis-steel-500",
+      subtext: pendingCount > 0 
+        ? `${pendingCount} ready for compute` 
+        : assets.length === 0 
+          ? "No assets yet"
+          : "All computed",
     },
   ];
 

@@ -1,5 +1,4 @@
 import { IExecDataProtector, type ProtectedData } from "@iexec/dataprotector";
-import type { BrowserProvider } from "ethers";
 
 // iExec App address (deployed TEE app)
 const IEXEC_APP_ADDRESS = process.env.NEXT_PUBLIC_IEXEC_APP_ADDRESS;
@@ -11,13 +10,14 @@ export interface AssetData {
 
 export interface BulkAssetData {
   assets: AssetData[];
+  [key: string]: unknown;
 }
 
 /**
  * Initialize DataProtector with browser wallet
  */
-export function createDataProtector(provider: BrowserProvider) {
-  return new IExecDataProtector(provider);
+export function createDataProtector(provider: unknown) {
+  return new IExecDataProtector(provider as any);
 }
 
 /**
@@ -30,7 +30,7 @@ export async function protectAssetData(
   name: string
 ): Promise<ProtectedData> {
   const protectedData = await dataProtector.protectData({
-    data: assetData,
+    data: assetData as any,
     name,
   });
 
@@ -44,15 +44,15 @@ export async function grantComputeAccess(
   dataProtector: IExecDataProtector,
   protectedDataAddress: string,
   appAddress: string = IEXEC_APP_ADDRESS || ""
-): Promise<string> {
+): Promise<any> {
   const grantedAccess = await dataProtector.grantAccess({
     protectedData: protectedDataAddress,
     authorizedApp: appAddress,
-    authorizedUser: "0x0000000000000000000000000000000000000000", // Any user
+    authorizedUser: "0x0000000000000000000000000000000000000000",
     numberOfAccess: 1,
   });
 
-  return grantedAccess.txHash;
+  return grantedAccess;
 }
 
 /**
@@ -63,13 +63,16 @@ export async function processProtectedData(
   protectedDataAddress: string,
   appAddress: string = IEXEC_APP_ADDRESS || ""
 ): Promise<{ taskId: string; result: unknown }> {
-  const { taskId, result } = await dataProtector.processProtectedData({
+  const response = await dataProtector.processProtectedData({
     protectedData: protectedDataAddress,
     app: appAddress,
-    maxPrice: 0, // Will be sponsored
-  });
+    maxPrice: 0,
+  }) as any;
 
-  return { taskId, result };
+  return { 
+    taskId: response.taskId || response, 
+    result: response.result || null 
+  };
 }
 
 /**
@@ -91,12 +94,11 @@ export async function getOwnedProtectedData(
  */
 export async function revokeAccess(
   dataProtector: IExecDataProtector,
-  protectedDataAddress: string,
-  appAddress: string = IEXEC_APP_ADDRESS || ""
-): Promise<string> {
-  const { txHash } = await dataProtector.revokeAllAccess({
+  protectedDataAddress: string
+): Promise<any> {
+  const result = await dataProtector.revokeOneAccess({
     protectedData: protectedDataAddress,
-  });
+  } as any);
 
-  return txHash;
+  return result;
 }

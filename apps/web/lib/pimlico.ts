@@ -1,4 +1,4 @@
-import { createPublicClient, http, type WalletClient } from "viem";
+import { createPublicClient, http, type WalletClient, type Account } from "viem";
 import { arbitrumSepolia } from "viem/chains";
 import {
   createSmartAccountClient,
@@ -43,8 +43,8 @@ export const paymasterClient = createPimlicoPaymasterClient({
 /**
  * Create a gasless smart account client from an existing wallet
  */
-export async function createGaslessClient(walletClient: WalletClient) {
-  const signer = walletClientToSmartAccountSigner(walletClient);
+export async function createGaslessClient(walletClient: WalletClient & { account: Account }) {
+  const signer = walletClientToSmartAccountSigner(walletClient as any);
 
   // Create simple smart account
   const simpleAccount = await signerToSimpleSmartAccount(publicClient, {
@@ -78,9 +78,15 @@ export async function estimateUserOperationGas(
   smartAccountClient: Awaited<ReturnType<typeof createGaslessClient>>,
   calls: { to: `0x${string}`; data: `0x${string}`; value?: bigint }[]
 ) {
+  const normalizedCalls = calls.map(c => ({
+    to: c.to,
+    data: c.data,
+    value: c.value ?? BigInt(0),
+  }));
+  
   const userOperation = await smartAccountClient.prepareUserOperationRequest({
     userOperation: {
-      callData: await smartAccountClient.account.encodeCallData(calls),
+      callData: await smartAccountClient.account.encodeCallData(normalizedCalls),
     },
   });
 

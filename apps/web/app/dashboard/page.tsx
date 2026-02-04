@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Shield, Plus, RefreshCw, Mail } from "lucide-react";
+import { Shield, Plus, RefreshCw, Mail, Trash2 } from "lucide-react";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAccount } from "wagmi";
 import Link from "next/link";
@@ -12,45 +12,69 @@ import { AssetProtectionForm } from "@/components/asset-protection-form";
 import { RiskScoreCard } from "@/components/risk-score-card";
 import { TEEExecutionPanel } from "@/components/tee-execution-panel";
 import { PortfolioOverview } from "@/components/portfolio-overview";
-
-// Mock data for demo
-const mockAssets = [
-  {
-    id: "0x1234...5678",
-    name: "Commercial Real Estate",
-    value: 2500000,
-    volatility: 0.15,
-    varScore: 187500,
-    safeLTV: 7200,
-    status: "computed" as const,
-    taskId: "0xabc...def",
-  },
-  {
-    id: "0x8765...4321",
-    name: "Corporate Bond Portfolio",
-    value: 1000000,
-    volatility: 0.08,
-    varScore: 48000,
-    safeLTV: 8500,
-    status: "computed" as const,
-    taskId: "0xfed...cba",
-  },
-  {
-    id: "0x9999...1111",
-    name: "Mixed Asset Fund",
-    value: 750000,
-    volatility: 0.22,
-    varScore: null,
-    safeLTV: null,
-    status: "pending" as const,
-    taskId: null,
-  },
-];
+import { useAssets, type Asset } from "@/hooks/useAssets";
 
 export default function DashboardPage() {
   const { isConnected, address } = useAccount();
-  const [assets, setAssets] = useState(mockAssets);
+  const { assets, addAsset, updateAsset, removeAsset, isLoading } = useAssets();
   const [isAddingAsset, setIsAddingAsset] = useState(false);
+
+  const handleAssetSubmit = (assetData: {
+    name: string;
+    value: number;
+    volatility: number;
+    protectedDataAddress: string;
+  }) => {
+    // Create asset with protected data address already set
+    const newAsset = addAsset({
+      name: assetData.name,
+      value: assetData.value,
+      volatility: assetData.volatility,
+    });
+
+    // Immediately update with protected data address
+    updateAsset(newAsset.id, {
+      protectedDataAddress: assetData.protectedDataAddress,
+      status: "protected",
+    });
+
+    setIsAddingAsset(false);
+  };
+
+  const handleComputeComplete = (
+    assetId: string,
+    result: { varScore: number; safeLTV: number; taskId: string }
+  ) => {
+    updateAsset(assetId, {
+      varScore: result.varScore,
+      safeLTV: result.safeLTV,
+      taskId: result.taskId,
+      status: "computed",
+    });
+  };
+
+  const handleDeleteAsset = (assetId: string) => {
+    if (confirm("Are you sure you want to delete this asset?")) {
+      removeAsset(assetId);
+    }
+  };
+
+  // Convert Asset to display format
+  const displayAssets = assets.map((asset) => ({
+    id: asset.id,
+    name: asset.name,
+    value: asset.value,
+    volatility: asset.volatility,
+    varScore: asset.varScore,
+    safeLTV: asset.safeLTV,
+    status: asset.status,
+    taskId: asset.taskId,
+    protectedDataAddress: asset.protectedDataAddress,
+  }));
+
+  const pendingAssets = assets.filter(
+    (a) => a.status === "pending" || a.status === "protected"
+  );
 
   if (!isConnected) {
     return (
@@ -82,14 +106,6 @@ export default function DashboardPage() {
             </span>
           </Link>
           <div className="flex items-center gap-4">
-            <Button
-              variant="outline"
-              size="sm"
-              className="border-aegis-steel-700"
-            >
-              <Mail className="w-4 h-4 mr-2" />
-              Setup Web3Mail
-            </Button>
             <ConnectButton />
           </div>
         </div>
@@ -120,43 +136,113 @@ export default function DashboardPage() {
           </div>
 
           {/* Portfolio Overview */}
-          <PortfolioOverview assets={assets} />
+          <PortfolioOverview assets={displayAssets} />
 
           {/* Tabs */}
           <Tabs defaultValue="assets" className="mt-8">
             <TabsList className="bg-aegis-steel-900 border border-aegis-steel-800">
-              <TabsTrigger value="assets">Protected Assets</TabsTrigger>
-              <TabsTrigger value="compute">TEE Compute</TabsTrigger>
+              <TabsTrigger value="assets">
+                Protected Assets ({assets.length})
+              </TabsTrigger>
+              <TabsTrigger value="compute">
+                TEE Compute ({pendingAssets.length} pending)
+              </TabsTrigger>
               <TabsTrigger value="history">History</TabsTrigger>
             </TabsList>
 
             <TabsContent value="assets" className="mt-6">
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {assets.map((asset, index) => (
-                  <motion.div
-                    key={asset.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
+              {isLoading ? (
+                <div className="text-center py-12">
+                  <RefreshCw className="w-8 h-8 text-aegis-cyan mx-auto animate-spin mb-4" />
+                  <p className="text-aegis-steel-400">Loading assets...</p>
+                </div>
+              ) : assets.length === 0 ? (
+                <div className="card-industrial rounded-xl border border-aegis-steel-800 p-12 text-center">
+                  <Shield className="w-12 h-12 text-aegis-steel-600 mx-auto mb-4" />
+                  <p className="text-aegis-steel-300 font-medium mb-2">
+                    No assets yet
+                  </p>
+                  <p className="text-aegis-steel-500 text-sm mb-6">
+                    Add your first asset to start computing risk scores
+                  </p>
+                  <Button
+                    onClick={() => setIsAddingAsset(true)}
+                    className="bg-aegis-cyan hover:bg-aegis-cyan-light"
                   >
-                    <RiskScoreCard asset={asset} />
-                  </motion.div>
-                ))}
-              </div>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Your First Asset
+                  </Button>
+                </div>
+              ) : (
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {displayAssets.map((asset, index) => (
+                    <motion.div
+                      key={asset.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                      className="relative group"
+                    >
+                      <RiskScoreCard asset={asset} />
+                      <button
+                        onClick={() => handleDeleteAsset(asset.id)}
+                        className="absolute top-4 right-4 p-2 rounded-lg bg-red-500/10 text-red-400 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/20"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
             </TabsContent>
 
             <TabsContent value="compute" className="mt-6">
               <TEEExecutionPanel
-                assets={assets.filter((a) => a.status === "pending")}
+                assets={pendingAssets}
+                onComputeComplete={handleComputeComplete}
               />
             </TabsContent>
 
             <TabsContent value="history" className="mt-6">
-              <div className="card-industrial rounded-xl border border-aegis-steel-800 p-8 text-center">
-                <RefreshCw className="w-12 h-12 text-aegis-steel-600 mx-auto mb-4" />
-                <p className="text-aegis-steel-400">
-                  Computation history will appear here
-                </p>
+              <div className="card-industrial rounded-xl border border-aegis-steel-800 p-8">
+                <h3 className="font-medium mb-4">Computed Assets</h3>
+                {assets.filter((a) => a.status === "computed").length === 0 ? (
+                  <div className="text-center py-8">
+                    <RefreshCw className="w-8 h-8 text-aegis-steel-600 mx-auto mb-4" />
+                    <p className="text-aegis-steel-400">
+                      No computed assets yet
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {assets
+                      .filter((a) => a.status === "computed")
+                      .map((asset) => (
+                        <div
+                          key={asset.id}
+                          className="flex items-center justify-between bg-aegis-steel-900 rounded-lg p-4"
+                        >
+                          <div>
+                            <p className="font-medium">{asset.name}</p>
+                            <p className="text-sm text-aegis-steel-500">
+                              Task: {asset.taskId?.slice(0, 16)}...
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-aegis-cyan font-mono">
+                              {asset.safeLTV
+                                ? `${(asset.safeLTV / 100).toFixed(1)}% LTV`
+                                : "-"}
+                            </p>
+                            <p className="text-sm text-aegis-steel-500">
+                              VaR: $
+                              {asset.varScore?.toLocaleString() || "-"}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                )}
               </div>
             </TabsContent>
           </Tabs>
@@ -167,20 +253,7 @@ export default function DashboardPage() {
       <AssetProtectionForm
         open={isAddingAsset}
         onOpenChange={setIsAddingAsset}
-        onSubmit={(asset) => {
-          setAssets([
-            ...assets,
-            {
-              ...asset,
-              id: `0x${Math.random().toString(16).slice(2, 10)}...${Math.random().toString(16).slice(2, 6)}`,
-              varScore: null,
-              safeLTV: null,
-              status: "pending" as const,
-              taskId: null,
-            },
-          ]);
-          setIsAddingAsset(false);
-        }}
+        onSubmit={handleAssetSubmit}
       />
     </main>
   );

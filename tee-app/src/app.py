@@ -178,6 +178,11 @@ def read_protected_data() -> dict:
     
     In the TEE environment, protected data is available at:
     /iexec_in/protected-data.json
+    
+    Handles two data formats:
+    1. Raw format: { "value": 1000000, "volatility": 0.15 }
+    2. Encoded format: { "assetValue": 100000000, "assetVolatility": 1500 }
+       (value in cents, volatility in basis points)
     """
     protected_data_path = os.environ.get(
         "IEXEC_IN",
@@ -186,13 +191,28 @@ def read_protected_data() -> dict:
     
     try:
         with open(protected_data_path, "r") as f:
-            return json.load(f)
+            data = json.load(f)
     except FileNotFoundError:
         # For local testing, check current directory
         if os.path.exists("test-data.json"):
             with open("test-data.json", "r") as f:
-                return json.load(f)
-        raise
+                data = json.load(f)
+        else:
+            raise
+    
+    # Convert from encoded format if needed
+    if "assetValue" in data:
+        data["value"] = data["assetValue"] / 100  # cents to dollars
+        data["volatility"] = data["assetVolatility"] / 10000  # bps to decimal
+    
+    # Handle bulk assets in encoded format
+    if "assets" in data:
+        for asset in data["assets"]:
+            if "assetValue" in asset:
+                asset["value"] = asset["assetValue"] / 100
+                asset["volatility"] = asset["assetVolatility"] / 10000
+    
+    return data
 
 
 def write_output(result: dict) -> None:
