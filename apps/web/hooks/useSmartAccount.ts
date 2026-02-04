@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useWalletClient, useAccount } from "wagmi";
-import { createGaslessClient } from "@/lib/pimlico";
+import { createGaslessClient, bundlerClient } from "@/lib/pimlico";
 import type { SmartAccountClient } from "permissionless";
 import type { Abi, Address } from "viem";
 
