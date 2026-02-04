@@ -610,17 +610,21 @@ All iExec SDK operations run server-side to avoid browser compatibility issues (
 
 ```bash
 # Frontend (.env in apps/web/)
-NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=e40e7554a29d019bedaad883896164a4
+NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your_walletconnect_project_id
 NEXT_PUBLIC_AEGIS_RISK_MANAGER_ADDRESS=0x253178656C31B5B67704e7Dd8ad604a6e89a1d2f
-NEXT_PUBLIC_PIMLICO_API_KEY=pim_Qa8RxmUoG9f6LY9ZWfQt2W
+NEXT_PUBLIC_PIMLICO_API_KEY=your_pimlico_api_key
 NEXT_PUBLIC_IEXEC_APP_ADDRESS=0x1378174Dffc1Df753799206ABdbc5843A0335890
 
 # Backend (server-side only)
-IEXEC_BACKEND_PRIVATE_KEY=f26a5baad6e3555c10af56a12340b4a15cce727403e7998380ff7d26f71c34e6
-PRIVATE_KEY=f26a5baad6e3555c10af56a12340b4a15cce727403e7998380ff7d26f71c34e6
+IEXEC_BACKEND_PRIVATE_KEY=your_testnet_private_key_here
+PRIVATE_KEY=your_testnet_private_key_here
 ```
 
-**⚠️ Security Note**: Private keys are for testnet only. Never commit mainnet keys!
+**⚠️ CRITICAL SECURITY NOTE**: 
+- NEVER commit real private keys to git!
+- These are EXAMPLES ONLY - use your own testnet keys
+- Rotate keys immediately if accidentally exposed
+- For production, use environment variables or secret managers (AWS Secrets Manager, HashiCorp Vault, etc.)
 
 ---
 
