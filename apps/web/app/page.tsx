@@ -130,13 +130,15 @@ export default function Home() {
                 )}
               </ConnectButton.Custom>
             )}
-            <Button
-              variant="outline"
-              size="lg"
-              className="border-aegis-steel-700 hover:bg-aegis-steel-800"
-            >
-              View Documentation
-            </Button>
+            <Link href="https://docs.iex.ec/" target="_blank" rel="noopener noreferrer">
+              <Button
+                variant="outline"
+                size="lg"
+                className="border-aegis-steel-700 hover:bg-aegis-steel-800"
+              >
+                View Documentation
+              </Button>
+            </Link>
           </motion.div>
         </motion.div>
       </section>
