@@ -738,9 +738,49 @@ iexec app deploy --chain arbitrum-sepolia-testnet
 5. Add monitoring & alerting
 6. Implement rate limiting & DDoS protection
 
+### Q: Why am I not signing transactions with MetaMask?
+
+**A:** This is a **known limitation** in our hybrid mode:
+
+**Current Flow (Hackathon):**
+```
+User → Wallet Connect (address only)
+     → API Route (backend)
+          → Backend Private Key signs ⚠️
+               → iExec operations
+```
+
+**Why:**
+- MetaMask SES (Secure EcmaScript) lockdown conflicts with `@iexec/dataprotector` dependencies
+- Cannot use iExec SDK client-side in browser
+- Workaround: Backend API routes with server-side signing
+
+**Security Implications:**
+- ⚠️ Backend holds private key (testnet only!)
+- ⚠️ User doesn't approve individual transactions
+- ✅ Acceptable for demo/hackathon
+- ❌ NOT suitable for production
+
+**Production Roadmap:**
+1. **Wait for Browser-Compatible SDK**: iExec team to fix MetaMask SES compatibility
+2. **Use WalletConnect Instead**: No SES lockdown issues
+3. **Implement Session Keys**: Account Abstraction with user-approved permissions
+
+**Normal Flow Should Be:**
+```
+User → "Protect Asset"
+     → MetaMask Popup: "Sign to encrypt data" 🔐
+          → User approves
+               → User owns transaction
+```
+
+**Timeline:** Will migrate to user-signed transactions within 1-2 weeks after hackathon (once browser compatibility is resolved)
+
+**Transparency:** We document this limitation in feedback.md and acknowledge it's a temporary workaround for the MetaMask SES issue.
+
 ### Q: What about Account Abstraction?
 
-**A:** Pimlico is configured but not integrated. To enable:
+**A:** Pimlico is configured and partially integrated. To test gasless mode:
 1. Create SmartAccount with `permissionless.js`
 2. Use Pimlico Paymaster for gasless transactions
 3. Update frontend to use `sendUserOperation` instead of `sendTransaction`

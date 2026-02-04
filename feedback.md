@@ -370,6 +370,205 @@ We just called `protectData()` and it worked. That's what great developer tools 
 
 ---
 
+## ⚠️ Known Limitations & Production Roadmap
+
+### Current Limitation: Backend Signing (No User Signatures)
+
+**Issue:** Users are NOT signing transactions with MetaMask during data protection or TEE execution.
+
+**Why This Happens:**
+
+MetaMask's SES (Secure EcmaScript) lockdown conflicts with `@multiformats/multiaddr` (a dependency of iExec SDK):
+
+```javascript
+// This SHOULD work but doesn't:
+const dataProtector = new IExecDataProtectorCore(walletClient);
+// Error: Cannot assign to read only property 'name' of function 'class InvalidMultiaddrError'
+```
+
+**Current Workaround:**
+
+We moved iExec SDK calls to Next.js API routes (server-side) where the backend signs with its own private key:
+
+```javascript
+// Backend (API route):
+const ethProvider = utils.getSignerFromPrivateKey(RPC_URL, PRIVATE_KEY);
+const dataProtector = new IExecDataProtectorCore(ethProvider);
+// Works, but user doesn't sign ⚠️
+```
+
+**Security Implications:**
+
+| Aspect | Current (Hackathon) | Should Be (Production) |
+|--------|---------------------|------------------------|
+| **Data Ownership** | ⚠️ Backend signs | ✅ User signs |
+| **Transaction Control** | ⚠️ Backend controls | ✅ User controls |
+| **Private Key Security** | ⚠️ Backend holds key | ✅ User holds key |
+| **Transparency** | ❌ User doesn't see txs | ✅ User approves all |
+| **Trust Model** | ⚠️ Trust backend | ✅ Trustless |
+| **Risk Level** | ⚠️ Medium (testnet only!) | ✅ Low |
+
+**Why It's Acceptable for Hackathon:**
+- ✅ Testnet only (Arbitrum Sepolia)
+- ✅ No real value at risk
+- ✅ Backend key only controls test tokens
+- ✅ Demonstrates technical feasibility
+- ✅ Clear production migration path
+
+**Why It's NOT Acceptable for Production:**
+- ❌ Backend key compromise = full system compromise
+- ❌ Users don't control their data
+- ❌ Centralized trust point
+- ❌ Doesn't meet Web3 ethos (user sovereignty)
+
+---
+
+### Production Migration Plan
+
+**Timeline:** 1-2 weeks after hackathon
+
+#### Option 1: Browser-Compatible iExec SDK (Preferred)
+
+**Status:** Waiting for iExec team to release MetaMask-compatible build
+
+```javascript
+// Future (once SDK is fixed):
+const dataProtector = new IExecDataProtectorCore(walletClient);
+await dataProtector.protectData({ data, name });
+// MetaMask popup: "Sign to encrypt your data" 🔐
+// User signs ✅
+```
+
+**Benefits:**
+- ✅ User signs all transactions
+- ✅ True data ownership
+- ✅ No backend private key needed
+- ✅ Fully decentralized
+
+**Requirements:**
+- iExec SDK update to avoid `@multiformats/multiaddr` property redefinition
+- Or provide patched version specifically for MetaMask
+
+#### Option 2: WalletConnect Instead of MetaMask
+
+**Status:** Can implement immediately
+
+```javascript
+// Use WalletConnect provider (no SES lockdown):
+const walletConnectProvider = useWalletClient(); // WalletConnect
+const dataProtector = new IExecDataProtectorCore(walletConnectProvider);
+// No SES issue ✅
+```
+
+**Benefits:**
+- ✅ Works now (no waiting for SDK fix)
+- ✅ User signs transactions
+- ✅ Broader wallet support (Trust Wallet, Rainbow, etc.)
+
+**Trade-offs:**
+- ⚠️ MetaMask users must use WalletConnect mode
+- Still popular and widely used
+
+#### Option 3: Session Keys (Account Abstraction)
+
+**Status:** Can layer on top of Options 1 or 2
+
+```typescript
+// User signs ONCE to create session key:
+const sessionKey = await createSessionKey({
+  permissions: ['protectData', 'processTEE', 'attestRisk'],
+  limits: { maxValue: 100000, maxTasks: 10 },
+  expiry: '1 hour',
+});
+
+// Subsequent operations use session key (no popup spam):
+await dataProtector.protectData({ data, name }); // Uses session key ✅
+await teeEngine.process({ protectedDataAddress }); // Uses session key ✅
+
+// User experience: Sign once, smooth flow after
+// Security: Limited scope, time-bound, revokable
+```
+
+**Benefits:**
+- ✅ Best UX (sign once, not for every operation)
+- ✅ Still user-controlled (session keys are revokable)
+- ✅ Security with convenience
+- ✅ Modern Web3 pattern
+
+---
+
+### Implementation Steps for Real User Signatures
+
+**Week 1: Switch to User Signing**
+1. [ ] Choose Option 1 or 2 (or both with fallback)
+2. [ ] Update `useDataProtector` hook to use client-side SDK
+3. [ ] Remove backend private key from `.env`
+4. [ ] Test MetaMask signature flow end-to-end
+5. [ ] Update UI to show "Waiting for signature..." states
+
+**Week 2: Polish & Session Keys**
+1. [ ] Implement session key infrastructure (Option 3)
+2. [ ] Add signature request UI (toast notifications)
+3. [ ] Handle signature rejections gracefully
+4. [ ] Add "Why am I signing?" educational tooltips
+5. [ ] Test with multiple wallet types
+
+**Week 3: Production Hardening**
+1. [ ] Audit signature flows
+2. [ ] Add transaction replay protection
+3. [ ] Implement nonce management
+4. [ ] Add multi-sig for admin operations
+5. [ ] Security review
+
+---
+
+### Current vs. Future User Flow
+
+**Current (Hackathon - Backend Signing):**
+```
+1. User: Click "Protect Asset"
+2. Frontend: Send request to /api/iexec/protect
+3. Backend: Sign with IEXEC_BACKEND_PRIVATE_KEY ⚠️
+4. iExec: Encrypt data
+5. User: See result (no signature)
+```
+
+**Future (Production - User Signing):**
+```
+1. User: Click "Protect Asset"
+2. MetaMask: "Sign to encrypt your asset data" 🔐
+3. User: Review & approve signature
+4. iExec SDK: Encrypt data (client-side)
+5. User: See result + transaction hash
+```
+
+**Even Better (Production + Session Keys):**
+```
+1. User: Click "Enable Session" (first time only)
+2. MetaMask: "Sign to create 1-hour session" 🔐
+3. User: Approve (once)
+4. User: Click "Protect Asset" → Instant (no popup) ✅
+5. User: Click "Process TEE" → Instant (no popup) ✅
+6. User: Click "Attest Risk" → Instant (no popup) ✅
+   (Session key handles all within approved limits)
+```
+
+---
+
+### Transparency & Disclosure
+
+We are **fully transparent** about this limitation:
+
+- ✅ Documented in README.md FAQ
+- ✅ Documented in feedback.md (here)
+- ✅ Explained in ARCHITECTURE.md
+- ✅ Will mention in demo video
+- ✅ Clear production migration path
+
+**This is a pragmatic workaround for a known browser compatibility issue, not a design choice.** We prioritize user sovereignty and will implement real user signatures immediately after the hackathon.
+
+---
+
 ## 🙏 Acknowledgments
 
 **Huge thanks to:**
