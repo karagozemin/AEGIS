@@ -1,6 +1,7 @@
 "use client";
 
-import { Shield, Clock, CheckCircle, AlertTriangle, Lock } from "lucide-react";
+import { Shield, Clock, CheckCircle, AlertTriangle, Lock, ExternalLink } from "lucide-react";
+import Link from "next/link";
 import {
   Card,
   CardContent,
@@ -44,13 +45,24 @@ export function RiskScoreCard({ asset }: RiskScoreCardProps) {
     <Card className="overflow-hidden">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
-          <div>
+          <div className="flex-1 min-w-0">
             <CardTitle className="text-lg">{asset.name}</CardTitle>
-            <CardDescription className="font-mono text-xs mt-1">
-              {addressStr
-                ? `${addressStr.slice(0, 10)}...${addressStr.slice(-6)}`
-                : asset.id.slice(0, 16)}
-            </CardDescription>
+            {addressStr ? (
+              <Link
+                href={`https://explorer.iex.ec/arbitrum-sepolia-testnet/dataset/${addressStr}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-mono text-xs mt-1 text-aegis-steel-500 hover:text-aegis-cyan transition-colors inline-flex items-center gap-1 group"
+                title={`View protected data: ${addressStr}`}
+              >
+                <span>{addressStr.slice(0, 10)}...{addressStr.slice(-6)}</span>
+                <ExternalLink className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </Link>
+            ) : (
+              <CardDescription className="font-mono text-xs mt-1">
+                {asset.id.slice(0, 16)}
+              </CardDescription>
+            )}
           </div>
           <StatusBadge status={asset.status} />
         </div>
@@ -114,10 +126,16 @@ export function RiskScoreCard({ asset }: RiskScoreCardProps) {
 
             {/* Task ID */}
             <div className="pt-4 border-t border-aegis-steel-800">
-              <div className="flex items-center gap-2 text-xs text-aegis-steel-500">
+              <Link
+                href={`https://explorer.iex.ec/arbitrum-sepolia-testnet/task/${asset.taskId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 text-xs text-aegis-steel-500 hover:text-aegis-cyan transition-colors group"
+              >
                 <Shield className="w-3 h-3 text-aegis-cyan" />
-                <span>TEE Task: {asset.taskId?.slice(0, 16)}...</span>
-              </div>
+                <span className="font-mono">TEE Task: {asset.taskId?.slice(0, 16)}...</span>
+                <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </Link>
             </div>
           </>
         ) : (
