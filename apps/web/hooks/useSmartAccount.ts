@@ -116,7 +116,7 @@ export function useSmartAccount() {
 
         // Wait for transaction to be included
         console.log("[SmartAccount] Waiting for transaction...");
-        const receipt = await smartAccountClient.waitForUserOperationReceipt({
+        const receipt = await bundlerClient.waitForUserOperationReceipt({
           hash: txHash,
         });
 
