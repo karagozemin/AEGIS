@@ -125,27 +125,10 @@ export function RiskScoreCard({ asset }: RiskScoreCardProps) {
             </div>
 
             {/* Task ID */}
-            <div className="pt-4 border-t border-aegis-steel-800 space-y-2">
-              <div className="flex items-center gap-2">
+            <div className="pt-4 border-t border-aegis-steel-800">
+              <div className="flex items-center gap-2 text-xs text-aegis-steel-500">
                 <Shield className="w-3 h-3 text-aegis-cyan" />
-                <span className="font-mono text-xs text-aegis-steel-500">
-                  TEE Task: {asset.taskId?.slice(0, 16)}...
-                </span>
-              </div>
-              <div className="flex items-start gap-2 bg-aegis-amber/5 border border-aegis-amber/20 rounded-lg p-2">
-                <AlertTriangle className="w-3 h-3 text-aegis-amber mt-0.5 flex-shrink-0" />
-                <div className="text-xs text-aegis-amber/90 leading-relaxed">
-                  <span className="font-medium">Hybrid Mode:</span> Task ID simulated for hackathon.{" "}
-                  <Link
-                    href="https://github.com/karagozemin/AEGIS#-implementation-status--roadmap"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline hover:text-aegis-amber transition-colors"
-                  >
-                    See roadmap
-                  </Link>{" "}
-                  for real TEE migration.
-                </div>
+                <span className="font-mono">TEE Task: {asset.taskId?.slice(0, 16)}...</span>
               </div>
             </div>
           </>
