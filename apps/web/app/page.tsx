@@ -5,6 +5,7 @@ import { Shield, Lock, Cpu, ArrowRight } from "lucide-react";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAccount } from "wagmi";
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 
 const features = [
@@ -58,14 +59,20 @@ export default function Home() {
       <div className="fixed inset-0 bg-grid opacity-30 pointer-events-none" />
 
       {/* Navigation */}
-      <nav className="relative z-10 border-b border-aegis-steel-800">
+      <nav className="relative z-10 border-b border-aegis-steel-800 bg-aegis-steel-950/50 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Shield className="w-8 h-8 text-aegis-cyan" />
+          <Link href="/" className="flex items-center gap-3 group">
+            <Image
+              src="/aegis-logo.png"
+              alt="Aegis Prime Logo"
+              width={40}
+              height={40}
+              className="w-10 h-10 transition-transform group-hover:scale-110"
+            />
             <span className="text-xl font-bold tracking-tight">
               AEGIS<span className="text-aegis-cyan">PRIME</span>
             </span>
-          </div>
+          </Link>
           <ConnectButton />
         </div>
       </nav>
