@@ -139,7 +139,7 @@ export function useDataProtector() {
         const result = await response.json();
         console.log("[iExec API] Processing complete:", result);
         
-        return { taskId: result.taskId, result: result.deal };
+        return { taskId: result.taskId, result: result.results };
       } catch (err: any) {
         console.error("[iExec API] Process data failed:", err);
         const message = err?.message || "Failed to process data";

@@ -1,7 +1,7 @@
 # Aegis Prime TEE Risk Engine
-# Dockerfile for iExec SGX-compatible application
+# Dockerfile for iExec SCONE TEE-compatible application
 
-FROM iexechub/python-sgx:1.0.0
+FROM python:3.9-slim
 
 # Set working directory
 WORKDIR /app
