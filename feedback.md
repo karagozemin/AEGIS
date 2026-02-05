@@ -370,6 +370,44 @@ We just called `protectData()` and it worked. That's what great developer tools 
 
 ---
 
+## 🔐 TEE Implementation Status & Migration Options
+
+### Current Status: Hybrid Mode
+
+**What's Real:**
+- ✅ Asset data encrypted with iExec DataProtectorCore
+- ✅ Protected data stored on IPFS with on-chain registry
+- ✅ Production Monte Carlo VaR algorithm (5000+ iterations)
+- ✅ Smart contract integration ready
+
+**What's Simulated:**
+- ⚠️ TEE enclave execution (deterministic backend computation)
+- ⚠️ Cryptographic attestation
+
+### Two TEE Migration Paths
+
+#### **Option A: Intel SGX (SCONE Framework)**
+- **Status:** SCONE GitLab access approved ✅
+- **Blocker:** Docker registry repository access pending
+- **Migration time:** ~2 hours once access granted
+- **Stability:** Production-ready (widely used in iExec ecosystem)
+
+#### **Option B: Intel TDX (Experimental)**
+- **Status:** SDK access requested from iExec team 📧
+- **Blocker:** Requires special iExec SDK 8.13.0-tdx
+- **Migration time:** ~30 minutes once SDK received
+- **Advantage:** No SCONE framework required (simpler setup)
+- **Limitation:** Experimental feature (per iExec documentation)
+
+### Timeline
+- **Email sent:** Support request for TDX SDK access
+- **Expected response:** 1-2 business days
+- **Migration:** Same day once SDK/access granted
+
+**Note:** Both paths are fully prepared - configuration files ready, Docker images built, infrastructure deployed. Only waiting for external approvals to activate real TEE.
+
+---
+
 ## ⚠️ Known Limitations & Production Roadmap
 
 ### Current Limitation: Backend Signing (No User Signatures)

@@ -622,30 +622,42 @@ uint256 public constant SCORE_EXPIRY = 7 days;
 - ⚠️ TEE attestation (requires SCONE framework setup)
 
 **Why Hybrid?**
-- SCONE account approval pending (required for TEE image building)
+- **SCONE Path:** Account approved but Docker registry access pending
+- **Intel TDX Path:** Requires special iExec SDK 8.13.0-tdx (requested from iExec team)
 - All infrastructure ready: Docker image built, iExec apps deployed
-- Easy migration: only `sconify.sh` + redeploy needed
+- Easy migration: configuration files ready, awaiting SDK/registry access
 
 ### 🚀 **Real TEE Migration Plan (v2.0)**
 
-**Status:** 📋 SCONE account application submitted
+**Two Paths Available:**
 
-**When approved, migration takes ~2 hours:**
+#### **Path A: Intel SGX (SCONE Framework)**
+**Status:** 🔐 SCONE GitLab access granted, Docker registry access pending
 
 ```bash
-# Step 1: Sconify Docker image (wrap with SCONE framework)
+# Once Docker registry access granted:
 cd tee-app
-./sconify.sh  # Generates mrenclave for SGX attestation
-
-# Step 2: Push TEE image to Docker Hub
+./sconify.sh  # Wrap with SCONE → generates mrenclave
 docker push karagozemin/tee-scone-aegis-var-engine:1.0.0
+iexec app deploy --chain bellecour
+```
 
-# Step 3: Redeploy iExec app with mrenclave metadata
-iexec app deploy --chain arbitrum-sepolia-testnet
+**Timeline:** 2 hours after Docker registry access
 
-# Step 4: Update frontend (remove hybrid simulation)
-# Backend API already uses IExecDataProtectorCore ✅
-# Only need to remove deterministic fallback
+#### **Path B: Intel TDX (Experimental)**
+**Status:** 📧 TDX SDK access requested from iExec team
+
+```bash
+# Once iExec SDK 8.13.0-tdx received:
+cd tee-app
+# Update chain.json: add TDX SMS endpoint
+# Update iexec.json: add "mrenclave": {"framework": "TDX"}
+iexec app deploy --chain bellecour --tag tee,tdx
+```
+
+**Timeline:** 30 minutes after SDK access
+
+**Note:** TDX doesn't require SCONE, simpler setup!
 
 # Step 5: Test end-to-end real TEE execution
 # - Data encrypted ✅

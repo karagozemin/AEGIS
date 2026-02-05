@@ -1,5 +1,5 @@
 {
-  "default": "arbitrum-sepolia-testnet",
+  "default": "bellecour",
   "chains": {
     "mainnet": {},
     "bellecour": {},
