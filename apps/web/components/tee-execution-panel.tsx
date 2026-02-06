@@ -28,13 +28,14 @@ interface TEEExecutionPanelProps {
   onComputeComplete: (assetId: string, result: { varScore: number; safeLTV: number; taskId: string; txHash?: string; explorerUrl?: string }) => void;
 }
 
-type ExecutionStep = "idle" | "granting" | "processing" | "attesting" | "saving" | "complete" | "error";
+type ExecutionStep = "idle" | "granting" | "processing" | "attesting" | "saving" | "confirming" | "complete" | "error";
 
 const steps: { key: ExecutionStep; label: string; description: string }[] = [
   { key: "granting", label: "Granting Access", description: "Authorizing TEE app to access encrypted data..." },
   { key: "processing", label: "TEE Computing", description: "Running Monte Carlo VaR inside SGX enclave..." },
   { key: "attesting", label: "Attesting", description: "Verifying computation and preparing results..." },
-  { key: "saving", label: "Saving On-Chain", description: "Submitting risk score to Arbitrum Sepolia..." },
+  { key: "saving", label: "Approve in Wallet", description: "Please confirm the transaction in your wallet..." },
+  { key: "confirming", label: "Confirming On-Chain", description: "Waiting for transaction to be confirmed on Arbitrum Sepolia..." },
   { key: "complete", label: "Complete", description: "Risk scores computed and stored on-chain" },
 ];
 
@@ -59,8 +60,8 @@ export function TEEExecutionPanel({ assets, onComputeComplete }: TEEExecutionPan
 
   const protectedAssets = assets.filter((a) => a.protectedDataAddress);
   
-  // Total steps per asset: grant(1) + process(2) + attest(3) + save(4)
-  const STEPS_PER_ASSET = 4;
+  // Total steps per asset: grant(1) + process(2) + attest(3) + save(4) + confirm(5)
+  const STEPS_PER_ASSET = 5;
 
   const executeComputation = async () => {
     console.log('[TEE] Execute clicked. isReady:', isReady, 'protectedAssets:', protectedAssets.length);
@@ -115,7 +116,7 @@ export function TEEExecutionPanel({ assets, onComputeComplete }: TEEExecutionPan
 
         setProgress(((i * STEPS_PER_ASSET + 3) / (protectedAssets.length * STEPS_PER_ASSET)) * 100);
 
-        // Step 4: Save on-chain
+        // Step 4: Save on-chain — wallet approval
         setExecutionStep("saving");
         setProgress(((i * STEPS_PER_ASSET + 3.2) / (protectedAssets.length * STEPS_PER_ASSET)) * 100);
 
@@ -155,7 +156,7 @@ export function TEEExecutionPanel({ assets, onComputeComplete }: TEEExecutionPan
             console.log('[TEE] ✅ Gasless tx confirmed:', txHash);
           } else {
             // ── Standard path: submit directly from connected wallet ──
-            console.log('[TEE] 🔄 Submitting from connected wallet...');
+            console.log('[TEE] 🔄 Waiting for wallet approval...');
             
             const assetIdBytes32 = keccak256(toBytes(asset.id));
             const taskIdBytes32 = taskId.startsWith('0x') && taskId.length === 66
@@ -175,10 +176,14 @@ export function TEEExecutionPanel({ assets, onComputeComplete }: TEEExecutionPan
                 BigInt(5000), // iterations
               ],
               chain: arbitrumSepolia,
-              gas: BigInt(500_000), // explicit gas limit for Arbitrum Sepolia
+              gas: BigInt(500_000),
             });
 
-            console.log('[TEE] ⏳ TX sent, waiting for confirmation:', txHash_);
+            // Step 5: Wallet approved — now wait for on-chain confirmation
+            setExecutionStep("confirming");
+            setProgress(((i * STEPS_PER_ASSET + 4) / (protectedAssets.length * STEPS_PER_ASSET)) * 100);
+            setLastTxHash(txHash_);
+            console.log('[TEE] ⏳ TX sent, waiting for on-chain confirmation:', txHash_);
 
             // Wait for the transaction to be confirmed on-chain
             if (publicClient) {
@@ -193,7 +198,6 @@ export function TEEExecutionPanel({ assets, onComputeComplete }: TEEExecutionPan
 
             txHash = txHash_;
             explorerUrl = `https://sepolia.arbiscan.io/tx/${txHash}`;
-            setLastTxHash(txHash);
             console.log('[TEE] ✅ Score confirmed on-chain from wallet:', txHash);
           }
         } catch (submitErr: any) {
@@ -203,7 +207,7 @@ export function TEEExecutionPanel({ assets, onComputeComplete }: TEEExecutionPan
           return;
         }
 
-        setProgress(((i * STEPS_PER_ASSET + 4) / (protectedAssets.length * STEPS_PER_ASSET)) * 100);
+        setProgress(((i * STEPS_PER_ASSET + 5) / (protectedAssets.length * STEPS_PER_ASSET)) * 100);
 
         onComputeComplete(asset.id, {
           varScore,
