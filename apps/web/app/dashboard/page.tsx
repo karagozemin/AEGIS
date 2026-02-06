@@ -187,7 +187,7 @@ export default function DashboardPage() {
       <div className="fixed inset-0 bg-grid opacity-30 pointer-events-none" />
 
       {/* Navigation */}
-      <nav className="relative z-10 border-b border-aegis-steel-800 sticky top-0 bg-aegis-steel-950/80 backdrop-blur-sm">
+      <nav className="z-10 border-b border-aegis-steel-800 sticky top-0 bg-aegis-steel-950/80 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3 group">
             <Image
