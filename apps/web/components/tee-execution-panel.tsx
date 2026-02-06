@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Cpu, Zap, Shield, CheckCircle, AlertCircle, Loader2, Wallet, ExternalLink } from "lucide-react";
-import { useAccount, useWriteContract, usePublicClient, useSwitchChain } from "wagmi";
+import { useAccount, usePublicClient, useSwitchChain, useWalletClient } from "wagmi";
 import { arbitrumSepolia } from "wagmi/chains";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,7 +16,7 @@ import { Progress } from "@/components/ui/progress";
 import { useDataProtector } from "@/hooks/useDataProtector";
 import { useSmartAccount } from "@/hooks/useSmartAccount";
 import { AEGIS_RISK_MANAGER_ADDRESS, AEGIS_RISK_MANAGER_ABI } from "@/lib/wagmi";
-import { keccak256, toBytes } from "viem";
+import { keccak256, toBytes, encodeFunctionData } from "viem";
 import type { Asset } from "@/hooks/useAssets";
 
 // Add Switch component import
@@ -47,9 +47,9 @@ export function TEEExecutionPanel({ assets, onComputeComplete }: TEEExecutionPan
   const [gaslessMode, setGaslessMode] = useState(false);
   const [lastTxHash, setLastTxHash] = useState<string | null>(null);
 
-  const { address, chainId } = useAccount();
+  const { address } = useAccount();
   const { grantAccess, processData, isReady } = useDataProtector();
-  const { writeContractAsync } = useWriteContract();
+  const { data: walletClient } = useWalletClient();
   const publicClient = usePublicClient({ chainId: arbitrumSepolia.id });
   const { switchChainAsync } = useSwitchChain();
   const { 
@@ -158,59 +158,55 @@ export function TEEExecutionPanel({ assets, onComputeComplete }: TEEExecutionPan
             setLastTxHash(txHash);
             console.log('[TEE] ✅ Gasless tx confirmed:', txHash);
           } else {
-            // ── Standard path: try wallet first, fallback to backend oracle ──
+            // ── Standard path: wallet sendTransaction (bypass gas estimation) ──
+            // Then fallback to backend oracle if wallet fails
             const assetIdBytes32 = keccak256(toBytes(asset.id));
-            // Always hash taskId to get consistent bytes32
             const taskIdBytes32 = keccak256(toBytes(taskId));
 
             let walletSucceeded = false;
 
             try {
-              console.log('[TEE] 🔄 Attempting wallet submission...');
-              
-              // Always force switch to Arbitrum Sepolia before writing
-              // (chainId from useAccount may be stale after async flow)
+              console.log('[TEE] 🔄 Submitting from connected wallet...');
+
+              if (!walletClient) throw new Error('Wallet not connected');
+
+              // Force switch to Arbitrum Sepolia
               try {
                 await switchChainAsync({ chainId: arbitrumSepolia.id });
-                // Wait for MetaMask to fully propagate the chain switch
-                await new Promise(resolve => setTimeout(resolve, 1500));
+                await new Promise(resolve => setTimeout(resolve, 1000));
                 console.log('[TEE] 🔀 Switched to Arbitrum Sepolia');
               } catch (switchErr) {
                 console.warn('[TEE] ⚠️ Chain switch skipped:', (switchErr as any)?.message);
               }
 
-              // Verify we're actually on Arbitrum Sepolia before submitting
-              if (publicClient) {
-                const currentChain = await publicClient.getChainId();
-                console.log('[TEE] 🔗 Current chain:', currentChain, 'Expected:', arbitrumSepolia.id);
-                if (currentChain !== arbitrumSepolia.id) {
-                  throw new Error(`Chain mismatch: wallet on ${currentChain}, need ${arbitrumSepolia.id}`);
-                }
-              }
-
-              const txHash_ = await writeContractAsync({
-                address: AEGIS_RISK_MANAGER_ADDRESS,
+              // Encode calldata manually — sendTransaction with explicit gas
+              // bypasses MetaMask's eth_estimateGas which causes the RPC error
+              const calldata = encodeFunctionData({
                 abi: AEGIS_RISK_MANAGER_ABI as any,
                 functionName: 'submitRiskScore',
                 args: [
-                  address!, // owner = connected wallet
+                  address!,
                   assetIdBytes32,
                   BigInt(varBpsCapped),
                   BigInt(safeLTV),
                   taskIdBytes32,
-                  BigInt(5000), // iterations
+                  BigInt(5000),
                 ],
-                chain: arbitrumSepolia,
+              });
+
+              const txHash_ = await walletClient.sendTransaction({
+                to: AEGIS_RISK_MANAGER_ADDRESS as `0x${string}`,
+                data: calldata,
                 gas: BigInt(500_000),
+                chain: arbitrumSepolia,
               });
 
               // Step 5: Wallet approved — now wait for on-chain confirmation
               setExecutionStep("confirming");
               setProgress(((i * STEPS_PER_ASSET + 4) / (protectedAssets.length * STEPS_PER_ASSET)) * 100);
               setLastTxHash(txHash_);
-              console.log('[TEE] ⏳ TX sent, waiting for on-chain confirmation:', txHash_);
+              console.log('[TEE] ⏳ TX sent from wallet, confirming:', txHash_);
 
-              // Wait for the transaction to be confirmed on-chain
               if (publicClient) {
                 const receipt = await publicClient.waitForTransactionReceipt({
                   hash: txHash_,
@@ -226,16 +222,16 @@ export function TEEExecutionPanel({ assets, onComputeComplete }: TEEExecutionPan
               walletSucceeded = true;
               console.log('[TEE] ✅ Score confirmed on-chain from wallet:', txHash);
             } catch (walletErr: any) {
-              // If user explicitly rejected, don't fallback
+              // If user explicitly rejected in MetaMask, don't fallback
               if (walletErr?.message?.includes('User rejected') || walletErr?.message?.includes('User denied')) {
                 throw walletErr;
               }
-              console.warn('[TEE] ⚠️ Wallet submission failed, falling back to backend oracle:', walletErr?.shortMessage || walletErr?.message);
+              console.warn('[TEE] ⚠️ Wallet TX failed, falling back to backend oracle:', walletErr?.shortMessage || walletErr?.message);
             }
 
-            // Fallback: submit via backend API using teeOracle key
+            // Fallback: backend TEE oracle (safety net)
             if (!walletSucceeded) {
-              console.log('[TEE] 🔄 Submitting via backend TEE oracle...');
+              console.log('[TEE] 🔄 Submitting via backend TEE oracle (fallback)...');
               setExecutionStep("confirming");
               setProgress(((i * STEPS_PER_ASSET + 4) / (protectedAssets.length * STEPS_PER_ASSET)) * 100);
 
@@ -261,7 +257,7 @@ export function TEEExecutionPanel({ assets, onComputeComplete }: TEEExecutionPan
               txHash = result.txHash;
               explorerUrl = result.explorerUrl || `https://sepolia.arbiscan.io/tx/${txHash}`;
               setLastTxHash(txHash!);
-              console.log('[TEE] ✅ Score confirmed on-chain via backend oracle:', txHash);
+              console.log('[TEE] ✅ Score confirmed on-chain via backend oracle (fallback):', txHash);
             }
           }
         } catch (submitErr: any) {
