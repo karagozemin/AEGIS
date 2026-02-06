@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Cpu, Zap, Shield, CheckCircle, AlertCircle, Loader2, Wallet, ExternalLink } from "lucide-react";
-import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { useAccount, useWriteContract, usePublicClient } from "wagmi";
 import { arbitrumSepolia } from "wagmi/chains";
 import { Button } from "@/components/ui/button";
 import {
@@ -49,6 +49,7 @@ export function TEEExecutionPanel({ assets, onComputeComplete }: TEEExecutionPan
   const { address } = useAccount();
   const { grantAccess, processData, isReady } = useDataProtector();
   const { writeContractAsync } = useWriteContract();
+  const publicClient = usePublicClient({ chainId: arbitrumSepolia.id });
   const { 
     isGaslessEnabled, 
     smartAccountAddress, 
@@ -161,7 +162,6 @@ export function TEEExecutionPanel({ assets, onComputeComplete }: TEEExecutionPan
               ? taskId as `0x${string}`
               : keccak256(toBytes(taskId));
 
-            // Use fetch to call a helper that triggers wallet popup
             const txHash_ = await writeContractAsync({
               address: AEGIS_RISK_MANAGER_ADDRESS,
               abi: AEGIS_RISK_MANAGER_ABI as any,
@@ -175,16 +175,32 @@ export function TEEExecutionPanel({ assets, onComputeComplete }: TEEExecutionPan
                 BigInt(5000), // iterations
               ],
               chain: arbitrumSepolia,
+              gas: BigInt(500_000), // explicit gas limit for Arbitrum Sepolia
             });
+
+            console.log('[TEE] ⏳ TX sent, waiting for confirmation:', txHash_);
+
+            // Wait for the transaction to be confirmed on-chain
+            if (publicClient) {
+              const receipt = await publicClient.waitForTransactionReceipt({
+                hash: txHash_,
+                confirmations: 1,
+              });
+              if (receipt.status === 'reverted') {
+                throw new Error('Transaction reverted on-chain');
+              }
+            }
 
             txHash = txHash_;
             explorerUrl = `https://sepolia.arbiscan.io/tx/${txHash}`;
             setLastTxHash(txHash);
-            console.log('[TEE] ✅ Score saved on-chain from wallet:', txHash);
+            console.log('[TEE] ✅ Score confirmed on-chain from wallet:', txHash);
           }
         } catch (submitErr: any) {
-          console.warn('[TEE] ⚠️ On-chain submission failed, continuing with local state:', submitErr?.message);
-          // Don't fail the whole flow - scores still saved locally
+          console.error('[TEE] ❌ On-chain submission failed:', submitErr?.message);
+          setErrorMessage(`On-chain submission failed: ${submitErr?.shortMessage || submitErr?.message || 'Transaction rejected'}`);
+          setExecutionStep('error');
+          return;
         }
 
         setProgress(((i * STEPS_PER_ASSET + 4) / (protectedAssets.length * STEPS_PER_ASSET)) * 100);
