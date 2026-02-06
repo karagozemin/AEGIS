@@ -47,7 +47,7 @@ export function TEEExecutionPanel({ assets, onComputeComplete }: TEEExecutionPan
   const [gaslessMode, setGaslessMode] = useState(false);
   const [lastTxHash, setLastTxHash] = useState<string | null>(null);
 
-  const { address, chainId } = useAccount();
+  const { address } = useAccount();
   const { grantAccess, processData, isReady } = useDataProtector();
   const { writeContractAsync } = useWriteContract();
   const publicClient = usePublicClient({ chainId: arbitrumSepolia.id });
@@ -158,55 +158,100 @@ export function TEEExecutionPanel({ assets, onComputeComplete }: TEEExecutionPan
             setLastTxHash(txHash);
             console.log('[TEE] ✅ Gasless tx confirmed:', txHash);
           } else {
-            // ── Standard path: submit directly from connected wallet ──
-            console.log('[TEE] 🔄 Waiting for wallet approval...');
-            
-            // Ensure we're on Arbitrum Sepolia (DataProtector may have switched to Bellecour)
-            if (chainId !== arbitrumSepolia.id) {
-              console.log('[TEE] 🔀 Switching to Arbitrum Sepolia...');
-              await switchChainAsync({ chainId: arbitrumSepolia.id });
-            }
-
+            // ── Standard path: try wallet first, fallback to backend oracle ──
             const assetIdBytes32 = keccak256(toBytes(asset.id));
             // Always hash taskId to get consistent bytes32
             const taskIdBytes32 = keccak256(toBytes(taskId));
 
-            const txHash_ = await writeContractAsync({
-              address: AEGIS_RISK_MANAGER_ADDRESS,
-              abi: AEGIS_RISK_MANAGER_ABI as any,
-              functionName: 'submitRiskScore',
-              args: [
-                address!, // owner = connected wallet
-                assetIdBytes32,
-                BigInt(varBpsCapped),
-                BigInt(safeLTV),
-                taskIdBytes32,
-                BigInt(5000), // iterations
-              ],
-              chain: arbitrumSepolia,
-              gas: BigInt(500_000),
-            });
+            let walletSucceeded = false;
 
-            // Step 5: Wallet approved — now wait for on-chain confirmation
-            setExecutionStep("confirming");
-            setProgress(((i * STEPS_PER_ASSET + 4) / (protectedAssets.length * STEPS_PER_ASSET)) * 100);
-            setLastTxHash(txHash_);
-            console.log('[TEE] ⏳ TX sent, waiting for on-chain confirmation:', txHash_);
-
-            // Wait for the transaction to be confirmed on-chain
-            if (publicClient) {
-              const receipt = await publicClient.waitForTransactionReceipt({
-                hash: txHash_,
-                confirmations: 1,
-              });
-              if (receipt.status === 'reverted') {
-                throw new Error('Transaction reverted on-chain');
+            try {
+              console.log('[TEE] 🔄 Attempting wallet submission...');
+              
+              // Always force switch to Arbitrum Sepolia before writing
+              // (chainId from useAccount may be stale after async flow)
+              try {
+                await switchChainAsync({ chainId: arbitrumSepolia.id });
+                console.log('[TEE] 🔀 Switched to Arbitrum Sepolia');
+              } catch (switchErr) {
+                console.warn('[TEE] ⚠️ Chain switch skipped:', (switchErr as any)?.message);
               }
+
+              const txHash_ = await writeContractAsync({
+                address: AEGIS_RISK_MANAGER_ADDRESS,
+                abi: AEGIS_RISK_MANAGER_ABI as any,
+                functionName: 'submitRiskScore',
+                args: [
+                  address!, // owner = connected wallet
+                  assetIdBytes32,
+                  BigInt(varBpsCapped),
+                  BigInt(safeLTV),
+                  taskIdBytes32,
+                  BigInt(5000), // iterations
+                ],
+                chain: arbitrumSepolia,
+                gas: BigInt(500_000),
+              });
+
+              // Step 5: Wallet approved — now wait for on-chain confirmation
+              setExecutionStep("confirming");
+              setProgress(((i * STEPS_PER_ASSET + 4) / (protectedAssets.length * STEPS_PER_ASSET)) * 100);
+              setLastTxHash(txHash_);
+              console.log('[TEE] ⏳ TX sent, waiting for on-chain confirmation:', txHash_);
+
+              // Wait for the transaction to be confirmed on-chain
+              if (publicClient) {
+                const receipt = await publicClient.waitForTransactionReceipt({
+                  hash: txHash_,
+                  confirmations: 1,
+                });
+                if (receipt.status === 'reverted') {
+                  throw new Error('Transaction reverted on-chain');
+                }
+              }
+
+              txHash = txHash_;
+              explorerUrl = `https://sepolia.arbiscan.io/tx/${txHash}`;
+              walletSucceeded = true;
+              console.log('[TEE] ✅ Score confirmed on-chain from wallet:', txHash);
+            } catch (walletErr: any) {
+              // If user explicitly rejected, don't fallback
+              if (walletErr?.message?.includes('User rejected') || walletErr?.message?.includes('User denied')) {
+                throw walletErr;
+              }
+              console.warn('[TEE] ⚠️ Wallet submission failed, falling back to backend oracle:', walletErr?.shortMessage || walletErr?.message);
             }
 
-            txHash = txHash_;
-            explorerUrl = `https://sepolia.arbiscan.io/tx/${txHash}`;
-            console.log('[TEE] ✅ Score confirmed on-chain from wallet:', txHash);
+            // Fallback: submit via backend API using teeOracle key
+            if (!walletSucceeded) {
+              console.log('[TEE] 🔄 Submitting via backend TEE oracle...');
+              setExecutionStep("confirming");
+              setProgress(((i * STEPS_PER_ASSET + 4) / (protectedAssets.length * STEPS_PER_ASSET)) * 100);
+
+              const resp = await fetch('/api/iexec/submit-score', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  ownerAddress: address,
+                  assetId: asset.id,
+                  varScore: varBpsCapped,
+                  safeLTV,
+                  taskId,
+                  iterations: 5000,
+                }),
+              });
+
+              if (!resp.ok) {
+                const errData = await resp.json().catch(() => ({}));
+                throw new Error(errData.error || `Backend submission failed (${resp.status})`);
+              }
+
+              const result = await resp.json();
+              txHash = result.txHash;
+              explorerUrl = result.explorerUrl || `https://sepolia.arbiscan.io/tx/${txHash}`;
+              setLastTxHash(txHash!);
+              console.log('[TEE] ✅ Score confirmed on-chain via backend oracle:', txHash);
+            }
           }
         } catch (submitErr: any) {
           console.error('[TEE] ❌ On-chain submission failed:', submitErr?.message);
