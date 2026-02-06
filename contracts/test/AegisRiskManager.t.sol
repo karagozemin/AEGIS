@@ -101,6 +101,21 @@ contract AegisRiskManagerTest is Test {
         );
     }
 
+    function test_SubmitRiskScore_AssetOwnerCanSubmit() public {
+        vm.prank(assetOwner);
+
+        vm.expectEmit(true, true, false, true);
+        emit RiskScoreUpdated(assetOwner, ASSET_ID_1, VAR_SCORE_1, SAFE_LTV_1, TEE_TASK_ID);
+
+        riskManager.submitRiskScore(
+            assetOwner, ASSET_ID_1, VAR_SCORE_1, SAFE_LTV_1, TEE_TASK_ID, MIN_ITERATIONS
+        );
+
+        AegisRiskManager.RiskScore memory score = riskManager.getFullRiskScore(assetOwner, ASSET_ID_1);
+        assertEq(score.varScore, VAR_SCORE_1);
+        assertEq(score.safeLTV, SAFE_LTV_1);
+    }
+
     function test_SubmitRiskScore_RevertInvalidVaR() public {
         vm.prank(teeOracle);
 

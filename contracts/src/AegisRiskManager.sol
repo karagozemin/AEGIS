@@ -115,6 +115,16 @@ contract AegisRiskManager is Ownable, ReentrancyGuard {
         _;
     }
 
+    /**
+     * @notice Allows TEE oracle OR the asset owner to submit scores
+     * @dev In production, only TEE would submit. For demo, users can also submit
+     *      their own scores from their connected wallet.
+     */
+    modifier onlyTEEOrOwner(address _assetOwner) {
+        if (msg.sender != teeOracle && msg.sender != _assetOwner) revert UnauthorizedOracle();
+        _;
+    }
+
     // ============ Constructor ============
 
     /**
@@ -145,7 +155,7 @@ contract AegisRiskManager is Ownable, ReentrancyGuard {
         uint256 safeLTV,
         bytes32 teeTaskId,
         uint256 iterations
-    ) external onlyTEE nonReentrant {
+    ) external onlyTEEOrOwner(owner) nonReentrant {
         _validateAndStoreScore(owner, assetId, varScore, safeLTV, teeTaskId, iterations);
 
         emit RiskScoreUpdated(owner, assetId, varScore, safeLTV, teeTaskId);

@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { Cpu, Zap, Shield, CheckCircle, AlertCircle, Loader2, Wallet, ExternalLink } from "lucide-react";
-import { useAccount } from "wagmi";
+import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { arbitrumSepolia } from "wagmi/chains";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -14,7 +15,6 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { useDataProtector } from "@/hooks/useDataProtector";
 import { useSmartAccount } from "@/hooks/useSmartAccount";
-import { useSubmitRiskScore } from "@/hooks/useRiskManager";
 import { AEGIS_RISK_MANAGER_ADDRESS, AEGIS_RISK_MANAGER_ABI } from "@/lib/wagmi";
 import { keccak256, toBytes } from "viem";
 import type { Asset } from "@/hooks/useAssets";
@@ -48,7 +48,7 @@ export function TEEExecutionPanel({ assets, onComputeComplete }: TEEExecutionPan
 
   const { address } = useAccount();
   const { grantAccess, processData, isReady } = useDataProtector();
-  const { submitScore } = useSubmitRiskScore();
+  const { writeContractAsync } = useWriteContract();
   const { 
     isGaslessEnabled, 
     smartAccountAddress, 
@@ -153,19 +153,34 @@ export function TEEExecutionPanel({ assets, onComputeComplete }: TEEExecutionPan
             setLastTxHash(txHash);
             console.log('[TEE] ✅ Gasless tx confirmed:', txHash);
           } else {
-            // ── Standard path: submit via backend TEE oracle API ──
-            const submitResult = await submitScore({
-              assetId: asset.id,
-              varScore: varBps,
-              safeLTV: safeLTV,
-              taskId: taskId,
-              iterations: 5000,
+            // ── Standard path: submit directly from connected wallet ──
+            console.log('[TEE] 🔄 Submitting from connected wallet...');
+            
+            const assetIdBytes32 = keccak256(toBytes(asset.id));
+            const taskIdBytes32 = taskId.startsWith('0x') && taskId.length === 66
+              ? taskId as `0x${string}`
+              : keccak256(toBytes(taskId));
+
+            // Use fetch to call a helper that triggers wallet popup
+            const txHash_ = await writeContractAsync({
+              address: AEGIS_RISK_MANAGER_ADDRESS,
+              abi: AEGIS_RISK_MANAGER_ABI as any,
+              functionName: 'submitRiskScore',
+              args: [
+                address!, // owner = connected wallet
+                assetIdBytes32,
+                BigInt(varBps),
+                BigInt(safeLTV),
+                taskIdBytes32,
+                BigInt(5000), // iterations
+              ],
+              chain: arbitrumSepolia,
             });
 
-            txHash = submitResult.txHash;
-            explorerUrl = submitResult.explorerUrl;
+            txHash = txHash_;
+            explorerUrl = `https://sepolia.arbiscan.io/tx/${txHash}`;
             setLastTxHash(txHash);
-            console.log('[TEE] ✅ Score saved on-chain:', txHash);
+            console.log('[TEE] ✅ Score saved on-chain from wallet:', txHash);
           }
         } catch (submitErr: any) {
           console.warn('[TEE] ⚠️ On-chain submission failed, continuing with local state:', submitErr?.message);
