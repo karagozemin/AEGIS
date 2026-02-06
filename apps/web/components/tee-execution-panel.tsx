@@ -47,7 +47,7 @@ export function TEEExecutionPanel({ assets, onComputeComplete }: TEEExecutionPan
   const [gaslessMode, setGaslessMode] = useState(false);
   const [lastTxHash, setLastTxHash] = useState<string | null>(null);
 
-  const { address } = useAccount();
+  const { address, chainId } = useAccount();
   const { grantAccess, processData, isReady } = useDataProtector();
   const { writeContractAsync } = useWriteContract();
   const publicClient = usePublicClient({ chainId: arbitrumSepolia.id });
@@ -172,9 +172,20 @@ export function TEEExecutionPanel({ assets, onComputeComplete }: TEEExecutionPan
               // (chainId from useAccount may be stale after async flow)
               try {
                 await switchChainAsync({ chainId: arbitrumSepolia.id });
+                // Wait for MetaMask to fully propagate the chain switch
+                await new Promise(resolve => setTimeout(resolve, 1500));
                 console.log('[TEE] 🔀 Switched to Arbitrum Sepolia');
               } catch (switchErr) {
                 console.warn('[TEE] ⚠️ Chain switch skipped:', (switchErr as any)?.message);
+              }
+
+              // Verify we're actually on Arbitrum Sepolia before submitting
+              if (publicClient) {
+                const currentChain = await publicClient.getChainId();
+                console.log('[TEE] 🔗 Current chain:', currentChain, 'Expected:', arbitrumSepolia.id);
+                if (currentChain !== arbitrumSepolia.id) {
+                  throw new Error(`Chain mismatch: wallet on ${currentChain}, need ${arbitrumSepolia.id}`);
+                }
               }
 
               const txHash_ = await writeContractAsync({
