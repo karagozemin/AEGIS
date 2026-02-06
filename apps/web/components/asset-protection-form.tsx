@@ -224,7 +224,7 @@ export function AssetProtectionForm({
                 Encrypting Your Data...
               </p>
               <p className="text-sm text-aegis-steel-400 mt-2">
-                Please confirm the transaction in your wallet
+                Protecting via iExec DataProtector on Bellecour chain
               </p>
             </div>
           </div>
