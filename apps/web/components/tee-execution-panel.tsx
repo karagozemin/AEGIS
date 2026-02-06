@@ -56,6 +56,7 @@ export function TEEExecutionPanel({ assets, onComputeComplete }: TEEExecutionPan
     smartAccountAddress, 
     isInitializing: isInitializingSA,
     sendGaslessTransaction,
+    initializeSmartAccount,
   } = useSmartAccount();
 
   const protectedAssets = assets.filter((a) => a.protectedDataAddress);
@@ -268,40 +269,56 @@ export function TEEExecutionPanel({ assets, onComputeComplete }: TEEExecutionPan
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Account Abstraction Toggle */}
-          {isGaslessEnabled && (
-            <div className="bg-aegis-steel-900/50 border border-aegis-cyan/20 rounded-lg p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Wallet className="w-5 h-5 text-aegis-cyan" />
-                  <div>
-                    <Label htmlFor="gasless-mode" className="text-sm font-medium">
-                      Gasless Mode (Account Abstraction)
-                    </Label>
-                    <p className="text-xs text-aegis-steel-400 mt-0.5">
-                      Pimlico Paymaster sponsors gas fees
-                    </p>
-                  </div>
-                </div>
-                <Switch
-                  id="gasless-mode"
-                  checked={gaslessMode}
-                  onCheckedChange={setGaslessMode}
-                  disabled={isInitializingSA}
-                />
-              </div>
-              {gaslessMode && smartAccountAddress && (
-                <div className="mt-3 pt-3 border-t border-aegis-steel-800">
-                  <p className="text-xs text-aegis-steel-400">
-                    Smart Account:{" "}
-                    <span className="font-mono text-aegis-cyan">
-                      {smartAccountAddress.slice(0, 6)}...{smartAccountAddress.slice(-4)}
-                    </span>
+          {/* Account Abstraction Toggle — always visible */}
+          <div className="bg-aegis-steel-900/50 border border-aegis-cyan/20 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Wallet className="w-5 h-5 text-aegis-cyan" />
+                <div>
+                  <Label htmlFor="gasless-mode" className="text-sm font-medium">
+                    Gasless Mode (Account Abstraction)
+                  </Label>
+                  <p className="text-xs text-aegis-steel-400 mt-0.5">
+                    Pimlico Paymaster sponsors gas fees
                   </p>
                 </div>
-              )}
+              </div>
+              <Switch
+                id="gasless-mode"
+                checked={gaslessMode}
+                onCheckedChange={async (checked) => {
+                  setGaslessMode(checked);
+                  if (checked && !isGaslessEnabled) {
+                    await initializeSmartAccount();
+                  }
+                }}
+                disabled={isInitializingSA}
+              />
             </div>
-          )}
+            {isInitializingSA && (
+              <div className="mt-3 pt-3 border-t border-aegis-steel-800">
+                <p className="text-xs text-aegis-steel-400 flex items-center gap-2">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  Initializing Smart Account...
+                </p>
+              </div>
+            )}
+            {gaslessMode && isGaslessEnabled && smartAccountAddress && (
+              <div className="mt-3 pt-3 border-t border-aegis-steel-800">
+                <p className="text-xs text-aegis-steel-400">
+                  Smart Account:{" "}
+                  <a
+                    href={`https://sepolia.arbiscan.io/address/${smartAccountAddress}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-mono text-aegis-cyan hover:underline"
+                  >
+                    {smartAccountAddress.slice(0, 6)}...{smartAccountAddress.slice(-4)}
+                  </a>
+                </p>
+              </div>
+            )}
+          </div>
 
           {/* Assets without protection warning */}
           {assetsWithoutProtection.length > 0 && (
@@ -377,7 +394,7 @@ export function TEEExecutionPanel({ assets, onComputeComplete }: TEEExecutionPan
               </div>
 
               {/* Transaction hash display */}
-              {lastTxHash && (executionStep === "complete" || executionStep === "saving") && (
+              {lastTxHash && (executionStep === "confirming" || executionStep === "complete") && (
                 <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3">
                   <div className="flex items-center gap-2 text-xs">
                     <CheckCircle className="w-3.5 h-3.5 text-green-400" />

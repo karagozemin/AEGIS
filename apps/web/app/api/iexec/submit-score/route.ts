@@ -11,6 +11,16 @@ const BACKEND_PRIVATE_KEY = process.env.IEXEC_BACKEND_PRIVATE_KEY;
 const RISK_MANAGER_ADDRESS = process.env.NEXT_PUBLIC_AEGIS_RISK_MANAGER_ADDRESS as `0x${string}`;
 const RPC_URL = process.env.NEXT_PUBLIC_ARBITRUM_SEPOLIA_RPC || 'https://sepolia-rollup.arbitrum.io/rpc';
 
+// Oracle verification at module load — log derived address for debugging
+if (BACKEND_PRIVATE_KEY) {
+  try {
+    const { privateKeyToAccount: pka } = require('viem/accounts');
+    const acct = pka(`0x${BACKEND_PRIVATE_KEY.replace('0x', '')}`);
+    console.log('[Oracle Check] Backend key derives to:', acct.address);
+    console.log('[Oracle Check] Expected teeOracle on contract: should match ^');
+  } catch { /* non-fatal */ }
+}
+
 /**
  * POST /api/iexec/submit-score
  * Submit TEE-computed risk score to AegisRiskManager contract on Arbitrum Sepolia
