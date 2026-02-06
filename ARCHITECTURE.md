@@ -272,7 +272,7 @@ Display in Risk Score Card
 
 ## 🧮 Monte Carlo VaR Engine (Python/NumPy)
 
-The TEE application (`tee-app/src/app.py`) implements a sophisticated Monte Carlo Value-at-Risk computation:
+The TEE application (`tee-app/aegis-var-calculator/src/app.py`) implements a sophisticated Monte Carlo Value-at-Risk computation:
 
 ### Algorithm
 

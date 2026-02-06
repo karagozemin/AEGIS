@@ -1,9 +1,0 @@
-{
-  "default": "bellecour",
-  "chains": {
-    "bellecour": {},
-    "arbitrum-sepolia-testnet": {
-      "id": "421614"
-    }
-  }
-}

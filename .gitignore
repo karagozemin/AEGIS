@@ -41,3 +41,12 @@ tee-app/.venv
 # Logs
 *.log
 npm-debug.log*
+
+# iExec sensitive files
+tee-app/aegis-var-calculator/iapp.config.json
+tee-app/aegis-var-calculator/iexec-deploy/
+tee-app/**/wallet.txt
+tee-app/**/*.pem
+tee-app/**/UTC--*
+**/*private*key*
+*.pem
