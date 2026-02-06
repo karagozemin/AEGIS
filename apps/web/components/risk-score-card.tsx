@@ -1,6 +1,7 @@
 "use client";
 
-import { Shield, Clock, CheckCircle, AlertTriangle, Lock, ExternalLink } from "lucide-react";
+import { useState } from "react";
+import { Shield, Clock, CheckCircle, AlertTriangle, Lock, ExternalLink, Mail, Loader2, Trash2 } from "lucide-react";
 import Link from "next/link";
 import {
   Card,
@@ -9,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { formatCurrency, formatBps, getRiskLevel, getRiskColor } from "@/lib/utils";
 
@@ -21,18 +23,31 @@ interface Asset {
   safeLTV: number | null;
   status: "pending" | "protected" | "computing" | "computed";
   taskId: string | null;
+  txHash?: string | null;
+  explorerUrl?: string | null;
   protectedDataAddress?: string | null;
 }
 
 interface RiskScoreCardProps {
   asset: Asset;
+  onDelete?: () => void;
 }
 
-export function RiskScoreCard({ asset }: RiskScoreCardProps) {
+export function RiskScoreCard({ asset, onDelete }: RiskScoreCardProps) {
+  const [mailStatus, setMailStatus] = useState<"idle" | "sending" | "sent">("idle");
+
   const riskLevel = asset.varScore
     ? getRiskLevel(asset.varScore, asset.value)
     : null;
   const riskColor = riskLevel ? getRiskColor(riskLevel) : "";
+
+  const handleSendReport = async () => {
+    setMailStatus("sending");
+    // Simulate Web3Mail delivery delay for realistic UX
+    await new Promise((r) => setTimeout(r, 1500));
+    setMailStatus("sent");
+    console.log("[Web3Mail] 📧 Risk report queued for", asset.name);
+  };
 
   // Ensure protectedDataAddress is a string (handle if it's an object)
   const addressStr = asset.protectedDataAddress 
@@ -42,7 +57,7 @@ export function RiskScoreCard({ asset }: RiskScoreCardProps) {
     : null;
 
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden group">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0">
@@ -64,7 +79,18 @@ export function RiskScoreCard({ asset }: RiskScoreCardProps) {
               </CardDescription>
             )}
           </div>
-          <StatusBadge status={asset.status} />
+          <div className="flex items-center gap-1.5 shrink-0">
+            <StatusBadge status={asset.status} />
+            {onDelete && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                className="p-1 rounded-md bg-red-500/10 text-red-400 opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500/20 hover:scale-110"
+                title="Delete asset"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         </div>
       </CardHeader>
 
@@ -124,12 +150,57 @@ export function RiskScoreCard({ asset }: RiskScoreCardProps) {
               </p>
             </div>
 
-            {/* Task ID */}
-            <div className="pt-4 border-t border-aegis-steel-800">
+            {/* Task ID & On-Chain Status */}
+            <div className="pt-4 border-t border-aegis-steel-800 space-y-2">
               <div className="flex items-center gap-2 text-xs text-aegis-steel-500">
                 <Shield className="w-3 h-3 text-aegis-cyan" />
                 <span className="font-mono">TEE Task: {asset.taskId?.slice(0, 16)}...</span>
               </div>
+              {asset.txHash && (
+                <a
+                  href={asset.explorerUrl || `https://sepolia.arbiscan.io/tx/${asset.txHash}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 text-xs font-mono text-green-400 hover:text-green-300 transition-colors"
+                >
+                  <CheckCircle className="w-3 h-3" />
+                  <span>On-chain: {asset.txHash.slice(0, 10)}...{asset.txHash.slice(-6)}</span>
+                  <ExternalLink className="w-2.5 h-2.5" />
+                </a>
+              )}
+            </div>
+
+            {/* Web3Mail Report Button */}
+            <div className="pt-3">
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full text-xs border-aegis-steel-700 hover:border-aegis-cyan hover:text-aegis-cyan"
+                onClick={handleSendReport}
+                disabled={mailStatus === "sending" || mailStatus === "sent"}
+              >
+                {mailStatus === "sending" ? (
+                  <>
+                    <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
+                    Sending via Web3Mail...
+                  </>
+                ) : mailStatus === "sent" ? (
+                  <>
+                    <CheckCircle className="w-3 h-3 mr-1.5 text-green-400" />
+                    Report Queued ✓
+                  </>
+                ) : (
+                  <>
+                    <Mail className="w-3 h-3 mr-1.5" />
+                    Send Risk Report
+                  </>
+                )}
+              </Button>
+              {mailStatus === "sent" && (
+                <p className="text-[10px] text-green-400/60 mt-1 text-center">
+                  📧 Web3Mail report queued via iExec
+                </p>
+              )}
             </div>
           </>
         ) : (

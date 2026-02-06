@@ -13,6 +13,8 @@ export interface Asset {
   safeLTV: number | null;
   status: "pending" | "protected" | "computing" | "computed";
   taskId: string | null;
+  txHash: string | null;
+  explorerUrl: string | null;
   createdAt: number;
 }
 
@@ -54,7 +56,7 @@ export function useAssets() {
   }, [assets, address, isLoading]);
 
   const addAsset = useCallback(
-    (asset: Omit<Asset, "id" | "createdAt" | "status" | "varScore" | "safeLTV" | "taskId" | "protectedDataAddress">) => {
+    (asset: Omit<Asset, "id" | "createdAt" | "status" | "varScore" | "safeLTV" | "taskId" | "txHash" | "explorerUrl" | "protectedDataAddress">) => {
       const newAsset: Asset = {
         ...asset,
         id: `asset_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
@@ -63,6 +65,8 @@ export function useAssets() {
         safeLTV: null,
         status: "pending",
         taskId: null,
+        txHash: null,
+        explorerUrl: null,
         createdAt: Date.now(),
       };
 

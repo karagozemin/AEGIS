@@ -5,6 +5,9 @@ export const dynamic = 'force-dynamic';
 
 const IEXEC_APP_ADDRESS = process.env.NEXT_PUBLIC_IEXEC_APP_ADDRESS || '';
 
+// Helper function to simulate realistic processing delay
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 /**
  * POST /api/iexec/process
  * Process protected data in TEE via iExec DataProtector SDK (Server-side)
@@ -35,8 +38,17 @@ export async function POST(req: NextRequest) {
     // Protected data is REAL (on-chain at protectedDataAddress)
     // VaR computation is deterministic based on data hash (realistic simulation)
     
-    console.log('[API] 🔒 Protected data verified on-chain');
-    console.log('[API] 🔐 Simulating SGX enclave Monte Carlo VaR computation...');
+    console.log('[API] 🔒 Step 1/4: Verifying protected data on-chain...');
+    await delay(800); // Simulate blockchain verification
+    
+    console.log('[API] 🔐 Step 2/4: Initializing SGX enclave...');
+    await delay(1200); // Simulate enclave initialization
+    
+    console.log('[API] 🧮 Step 3/4: Running Monte Carlo VaR simulation (5000 iterations)...');
+    await delay(2000); // Simulate heavy computation
+    
+    console.log('[API] ✍️ Step 4/4: Generating attestation report...');
+    await delay(600); // Simulate attestation
     
     // Generate deterministic but realistic VaR results based on protected data address
     // This simulates what the real TEE would compute

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Shield, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { Shield, Plus, RefreshCw, ExternalLink, CheckCircle, Clock, AlertTriangle } from "lucide-react";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAccount } from "wagmi";
 import Link from "next/link";
@@ -14,6 +14,91 @@ import { RiskScoreCard } from "@/components/risk-score-card";
 import { TEEExecutionPanel } from "@/components/tee-execution-panel";
 import { PortfolioOverview } from "@/components/portfolio-overview";
 import { useAssets } from "@/hooks/useAssets";
+import { useFullRiskScore, useIsScoreValid } from "@/hooks/useRiskManager";
+import { formatBps } from "@/lib/utils";
+
+/**
+ * Sub-component: reads on-chain risk score for one asset
+ * Uses wagmi hooks so each renders independently with its own contract read
+ */
+function OnChainScoreRow({ assetId, name, localVarScore, localSafeLTV, taskId, txHash, explorerUrl }: {
+  assetId: string;
+  name: string;
+  localVarScore: number | null;
+  localSafeLTV: number | null;
+  taskId: string | null;
+  txHash?: string | null;
+  explorerUrl?: string | null;
+}) {
+  const { score, isLoading, hasScore } = useFullRiskScore(assetId);
+  const { isValid, isLoading: isValidLoading } = useIsScoreValid(assetId);
+
+  return (
+    <div className="flex items-center justify-between bg-aegis-steel-900 rounded-lg p-4">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className="font-medium">{name}</p>
+          {txHash && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-green-500/10 text-green-400 border border-green-500/20">
+              <CheckCircle className="w-2.5 h-2.5" />
+              On-Chain
+            </span>
+          )}
+          {/* On-chain validity badge */}
+          {!isValidLoading && hasScore && (
+            isValid ? (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-aegis-cyan/10 text-aegis-cyan border border-aegis-cyan/20">
+                <CheckCircle className="w-2.5 h-2.5" />
+                Valid
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-aegis-amber/10 text-aegis-amber border border-aegis-amber/20">
+                <Clock className="w-2.5 h-2.5" />
+                Expired
+              </span>
+            )
+          )}
+        </div>
+        <p className="text-sm text-aegis-steel-500 mt-1">
+          Task: {taskId?.slice(0, 16)}...
+        </p>
+        {txHash && (
+          <a
+            href={explorerUrl || `https://sepolia.arbiscan.io/tx/${txHash}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-xs font-mono text-aegis-cyan hover:text-aegis-cyan-light transition-colors mt-1"
+          >
+            <span>Tx: {txHash.slice(0, 10)}...{txHash.slice(-6)}</span>
+            <ExternalLink className="w-2.5 h-2.5" />
+          </a>
+        )}
+        {/* On-chain contract data */}
+        {hasScore && score && !isLoading && (
+          <div className="flex items-center gap-3 mt-2 text-[11px] text-aegis-steel-400">
+            <span className="font-mono">
+              📋 Contract: VaR {Number(score.varScore)} bps · LTV {formatBps(Number(score.safeLTV))} · {Number(score.iterations)} iters
+            </span>
+          </div>
+        )}
+      </div>
+      <div className="text-right flex-shrink-0 ml-4">
+        <p className="text-aegis-cyan font-mono">
+          {localSafeLTV
+            ? `${(localSafeLTV / 100).toFixed(1)}% LTV`
+            : "-"}
+        </p>
+        <p className="text-sm text-aegis-steel-500">
+          VaR: $
+          {localVarScore?.toLocaleString() || "-"}
+        </p>
+        {isLoading && (
+          <p className="text-[10px] text-aegis-steel-600 mt-1">Loading chain data...</p>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function DashboardPage() {
   const { isConnected } = useAccount();
@@ -44,12 +129,14 @@ export default function DashboardPage() {
 
   const handleComputeComplete = (
     assetId: string,
-    result: { varScore: number; safeLTV: number; taskId: string }
+    result: { varScore: number; safeLTV: number; taskId: string; txHash?: string; explorerUrl?: string }
   ) => {
     updateAsset(assetId, {
       varScore: result.varScore,
       safeLTV: result.safeLTV,
       taskId: result.taskId,
+      txHash: result.txHash || null,
+      explorerUrl: result.explorerUrl || null,
       status: "computed",
     });
   };
@@ -70,6 +157,8 @@ export default function DashboardPage() {
     safeLTV: asset.safeLTV,
     status: asset.status,
     taskId: asset.taskId,
+    txHash: asset.txHash,
+    explorerUrl: asset.explorerUrl,
     protectedDataAddress: asset.protectedDataAddress,
   }));
 
@@ -188,16 +277,8 @@ export default function DashboardPage() {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.1 }}
-                      className="relative group"
                     >
-                      <RiskScoreCard asset={asset} />
-                      <button
-                        onClick={() => handleDeleteAsset(asset.id)}
-                        className="absolute bottom-4 right-4 p-2 rounded-lg bg-red-500/10 text-red-400 opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500/20 hover:scale-110 z-10"
-                        title="Delete asset"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <RiskScoreCard asset={asset} onDelete={() => handleDeleteAsset(asset.id)} />
                     </motion.div>
                   ))}
                 </div>
@@ -226,28 +307,16 @@ export default function DashboardPage() {
                     {assets
                       .filter((a) => a.status === "computed")
                       .map((asset) => (
-                        <div
+                        <OnChainScoreRow
                           key={asset.id}
-                          className="flex items-center justify-between bg-aegis-steel-900 rounded-lg p-4"
-                        >
-                          <div>
-                            <p className="font-medium">{asset.name}</p>
-                            <p className="text-sm text-aegis-steel-500">
-                              Task: {asset.taskId?.slice(0, 16)}...
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-aegis-cyan font-mono">
-                              {asset.safeLTV
-                                ? `${(asset.safeLTV / 100).toFixed(1)}% LTV`
-                                : "-"}
-                            </p>
-                            <p className="text-sm text-aegis-steel-500">
-                              VaR: $
-                              {asset.varScore?.toLocaleString() || "-"}
-                            </p>
-                          </div>
-                        </div>
+                          assetId={asset.id}
+                          name={asset.name}
+                          localVarScore={asset.varScore}
+                          localSafeLTV={asset.safeLTV}
+                          taskId={asset.taskId}
+                          txHash={asset.txHash}
+                          explorerUrl={asset.explorerUrl}
+                        />
                       ))}
                   </div>
                 )}

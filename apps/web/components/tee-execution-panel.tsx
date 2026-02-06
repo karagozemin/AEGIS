@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Cpu, Zap, Shield, CheckCircle, AlertCircle, Loader2, Wallet } from "lucide-react";
+import { Cpu, Zap, Shield, CheckCircle, AlertCircle, Loader2, Wallet, ExternalLink } from "lucide-react";
+import { useAccount } from "wagmi";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -13,6 +14,9 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { useDataProtector } from "@/hooks/useDataProtector";
 import { useSmartAccount } from "@/hooks/useSmartAccount";
+import { useSubmitRiskScore } from "@/hooks/useRiskManager";
+import { AEGIS_RISK_MANAGER_ADDRESS, AEGIS_RISK_MANAGER_ABI } from "@/lib/wagmi";
+import { keccak256, toBytes } from "viem";
 import type { Asset } from "@/hooks/useAssets";
 
 // Add Switch component import
@@ -21,16 +25,17 @@ import { Label } from "@/components/ui/label";
 
 interface TEEExecutionPanelProps {
   assets: Asset[];
-  onComputeComplete: (assetId: string, result: { varScore: number; safeLTV: number; taskId: string }) => void;
+  onComputeComplete: (assetId: string, result: { varScore: number; safeLTV: number; taskId: string; txHash?: string; explorerUrl?: string }) => void;
 }
 
-type ExecutionStep = "idle" | "granting" | "processing" | "attesting" | "complete" | "error";
+type ExecutionStep = "idle" | "granting" | "processing" | "attesting" | "saving" | "complete" | "error";
 
 const steps: { key: ExecutionStep; label: string; description: string }[] = [
   { key: "granting", label: "Granting Access", description: "Authorizing TEE app to access encrypted data..." },
   { key: "processing", label: "TEE Computing", description: "Running Monte Carlo VaR inside SGX enclave..." },
   { key: "attesting", label: "Attesting", description: "Verifying computation and preparing results..." },
-  { key: "complete", label: "Complete", description: "Risk scores computed successfully" },
+  { key: "saving", label: "Saving On-Chain", description: "Submitting risk score to Arbitrum Sepolia..." },
+  { key: "complete", label: "Complete", description: "Risk scores computed and stored on-chain" },
 ];
 
 export function TEEExecutionPanel({ assets, onComputeComplete }: TEEExecutionPanelProps) {
@@ -39,18 +44,22 @@ export function TEEExecutionPanel({ assets, onComputeComplete }: TEEExecutionPan
   const [currentAssetIndex, setCurrentAssetIndex] = useState(0);
   const [errorMessage, setErrorMessage] = useState("");
   const [gaslessMode, setGaslessMode] = useState(false);
+  const [lastTxHash, setLastTxHash] = useState<string | null>(null);
 
+  const { address } = useAccount();
   const { grantAccess, processData, isReady } = useDataProtector();
+  const { submitScore } = useSubmitRiskScore();
   const { 
     isGaslessEnabled, 
     smartAccountAddress, 
-    isInitializing: isInitializingSA 
+    isInitializing: isInitializingSA,
+    sendGaslessTransaction,
   } = useSmartAccount();
 
   const protectedAssets = assets.filter((a) => a.protectedDataAddress);
   
-  // Debug logging
-  console.log('[TEE Panel] Render - isReady:', isReady, 'assets:', assets.length, 'protectedAssets:', protectedAssets.length, 'executionStep:', executionStep);
+  // Total steps per asset: grant(1) + process(2) + attest(3) + save(4)
+  const STEPS_PER_ASSET = 4;
 
   const executeComputation = async () => {
     console.log('[TEE] Execute clicked. isReady:', isReady, 'protectedAssets:', protectedAssets.length);
@@ -63,6 +72,7 @@ export function TEEExecutionPanel({ assets, onComputeComplete }: TEEExecutionPan
     }
 
     setErrorMessage("");
+    setLastTxHash(null);
 
     for (let i = 0; i < protectedAssets.length; i++) {
       const asset = protectedAssets[i];
@@ -73,30 +83,103 @@ export function TEEExecutionPanel({ assets, onComputeComplete }: TEEExecutionPan
       try {
         // Step 1: Grant access
         setExecutionStep("granting");
-        setProgress(((i * 3 + 1) / (protectedAssets.length * 3)) * 100);
+        setProgress(((i * STEPS_PER_ASSET + 0.5) / (protectedAssets.length * STEPS_PER_ASSET)) * 100);
 
         await grantAccess(asset.protectedDataAddress);
+        
+        // Small delay between steps for visual feedback
+        await new Promise(r => setTimeout(r, 300));
+        setProgress(((i * STEPS_PER_ASSET + 1) / (protectedAssets.length * STEPS_PER_ASSET)) * 100);
 
         // Step 2: Process data in TEE
         setExecutionStep("processing");
-        setProgress(((i * 3 + 2) / (protectedAssets.length * 3)) * 100);
+        setProgress(((i * STEPS_PER_ASSET + 1.5) / (protectedAssets.length * STEPS_PER_ASSET)) * 100);
 
         const { taskId, result } = await processData(asset.protectedDataAddress);
+        
+        await new Promise(r => setTimeout(r, 300));
+        setProgress(((i * STEPS_PER_ASSET + 2) / (protectedAssets.length * STEPS_PER_ASSET)) * 100);
 
         // Step 3: Parse result and attest
         setExecutionStep("attesting");
-        setProgress(((i * 3 + 3) / (protectedAssets.length * 3)) * 100);
+        setProgress(((i * STEPS_PER_ASSET + 2.5) / (protectedAssets.length * STEPS_PER_ASSET)) * 100);
+        
+        // Simulate attestation verification delay
+        await new Promise(r => setTimeout(r, 800));
 
         // Parse the TEE result
         const computedResult = result as any;
-        // Result from demo mode or real TEE
         const varScore = computedResult?.var_95 || computedResult?.results?.[0]?.var_95 || asset.value * 0.15;
         const safeLTV = computedResult?.safe_ltv_bps || computedResult?.results?.[0]?.safe_ltv_bps || 7500;
+
+        setProgress(((i * STEPS_PER_ASSET + 3) / (protectedAssets.length * STEPS_PER_ASSET)) * 100);
+
+        // Step 4: Save on-chain
+        setExecutionStep("saving");
+        setProgress(((i * STEPS_PER_ASSET + 3.2) / (protectedAssets.length * STEPS_PER_ASSET)) * 100);
+
+        let txHash: string | undefined;
+        let explorerUrl: string | undefined;
+
+        try {
+          // Convert VaR dollar amount to basis points relative to asset value
+          const varBps = Math.min(Math.round((varScore / asset.value) * 10000), 10000);
+          
+          if (gaslessMode && isGaslessEnabled) {
+            // ── Gasless path: submit directly from Smart Account via Pimlico ──
+            console.log('[TEE] 🔄 Submitting via Pimlico Smart Account (gasless)...');
+            
+            const assetIdBytes32 = keccak256(toBytes(asset.id));
+            const taskIdBytes32 = taskId.startsWith('0x') && taskId.length === 66
+              ? taskId as `0x${string}`
+              : keccak256(toBytes(taskId));
+
+            const result = await sendGaslessTransaction({
+              to: AEGIS_RISK_MANAGER_ADDRESS,
+              abi: AEGIS_RISK_MANAGER_ABI as any,
+              functionName: 'submitRiskScore',
+              args: [
+                address!, // owner (connected wallet)
+                assetIdBytes32,
+                BigInt(varBps),
+                BigInt(safeLTV),
+                taskIdBytes32,
+                BigInt(5000), // iterations
+              ],
+            });
+
+            txHash = result.receipt.transactionHash;
+            explorerUrl = `https://sepolia.arbiscan.io/tx/${txHash}`;
+            setLastTxHash(txHash);
+            console.log('[TEE] ✅ Gasless tx confirmed:', txHash);
+          } else {
+            // ── Standard path: submit via backend TEE oracle API ──
+            const submitResult = await submitScore({
+              assetId: asset.id,
+              varScore: varBps,
+              safeLTV: safeLTV,
+              taskId: taskId,
+              iterations: 5000,
+            });
+
+            txHash = submitResult.txHash;
+            explorerUrl = submitResult.explorerUrl;
+            setLastTxHash(txHash);
+            console.log('[TEE] ✅ Score saved on-chain:', txHash);
+          }
+        } catch (submitErr: any) {
+          console.warn('[TEE] ⚠️ On-chain submission failed, continuing with local state:', submitErr?.message);
+          // Don't fail the whole flow - scores still saved locally
+        }
+
+        setProgress(((i * STEPS_PER_ASSET + 4) / (protectedAssets.length * STEPS_PER_ASSET)) * 100);
 
         onComputeComplete(asset.id, {
           varScore,
           safeLTV,
           taskId,
+          txHash,
+          explorerUrl,
         });
 
       } catch (err: any) {
@@ -115,7 +198,8 @@ export function TEEExecutionPanel({ assets, onComputeComplete }: TEEExecutionPan
       setExecutionStep("idle");
       setProgress(0);
       setCurrentAssetIndex(0);
-    }, 3000);
+      setLastTxHash(null);
+    }, 5000);
   };
 
   if (assets.length === 0) {
@@ -256,6 +340,25 @@ export function TEEExecutionPanel({ assets, onComputeComplete }: TEEExecutionPan
                   </div>
                 ))}
               </div>
+
+              {/* Transaction hash display */}
+              {lastTxHash && (executionStep === "complete" || executionStep === "saving") && (
+                <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3">
+                  <div className="flex items-center gap-2 text-xs">
+                    <CheckCircle className="w-3.5 h-3.5 text-green-400" />
+                    <span className="text-green-400 font-medium">Stored on Arbitrum Sepolia</span>
+                  </div>
+                  <a
+                    href={`https://sepolia.arbiscan.io/tx/${lastTxHash}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 mt-2 text-xs font-mono text-aegis-cyan hover:text-aegis-cyan-light transition-colors"
+                  >
+                    <span>{lastTxHash.slice(0, 10)}...{lastTxHash.slice(-8)}</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+              )}
             </div>
           )}
 
@@ -360,10 +463,10 @@ export function TEEExecutionPanel({ assets, onComputeComplete }: TEEExecutionPan
               <span className="text-aegis-cyan font-bold">4</span>
             </div>
             <div>
-              <p className="font-medium text-aegis-steel-200">Result Delivery</p>
+              <p className="font-medium text-aegis-steel-200">On-Chain Storage</p>
               <p>
-                Only the computed risk scores are returned. Your original data
-                remains private.
+                Risk scores are submitted to AegisRiskManager on Arbitrum
+                Sepolia via TEE oracle for on-chain verification.
               </p>
             </div>
           </div>
