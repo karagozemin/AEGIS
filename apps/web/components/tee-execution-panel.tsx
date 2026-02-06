@@ -198,6 +198,8 @@ export function TEEExecutionPanel({ assets, onComputeComplete }: TEEExecutionPan
                 to: AEGIS_RISK_MANAGER_ADDRESS as `0x${string}`,
                 data: calldata,
                 gas: BigInt(500_000),
+                maxFeePerGas: BigInt(100_000_000),       // 0.1 gwei
+                maxPriorityFeePerGas: BigInt(100_000_000), // 0.1 gwei
                 chain: arbitrumSepolia,
               });
 
