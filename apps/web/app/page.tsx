@@ -104,7 +104,7 @@ export default function Home() {
               variants={rise}
               className="mt-2 text-5xl font-extrabold leading-[1.08] tracking-tight sm:text-7xl"
             >
-              Prove solvency.
+              Prove solvency
               <br />
               <span className="text-glow-cyan bg-gradient-to-r from-aegis-cyan to-teal-400 bg-clip-text text-transparent">
                 Reveal nothing.
@@ -117,7 +117,7 @@ export default function Home() {
             >
               Aegis Prime encrypts your RWA data, computes Monte&nbsp;Carlo VaR
               inside an Intel&nbsp;SGX enclave, and writes a verifiable risk
-              score on-chain&nbsp;— <em className="text-white not-italic">without&nbsp;ever exposing your financials</em>.
+              score on-chain&nbsp; <em className="text-white not-italic">without&nbsp;ever exposing your financials</em>.
             </motion.p>
 
             <motion.div variants={rise} className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
