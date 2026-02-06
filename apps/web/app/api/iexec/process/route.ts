@@ -54,17 +54,18 @@ export async function POST(req: NextRequest) {
     // This simulates what the real TEE would compute
     const seed = parseInt(protectedDataAddress.slice(2, 10), 16);
     const random = (seed * 9301 + 49297) % 233280 / 233280;
+    const random1 = ((seed * 7393 + 29411) % 233280) / 233280;
     
-    // Realistic VaR computation results (would come from Python Monte Carlo in real TEE)
-    const var_95 = 5000 + (random * 15000); // VaR at 95% confidence
-    const var_99 = var_95 * 1.3; // VaR at 99% confidence (typically higher)
-    const safe_ltv_bps = Math.floor(7500 - (random * 2000)); // Safe LTV: 55-75%
+    // Realistic VaR in BASIS POINTS (5-25% of asset value)
+    const var_95_bps = Math.floor(500 + (random * 2000));  // 500-2500 bps (5-25%)
+    const var_99_bps = Math.floor(var_95_bps * 1.3);       // ~30% higher
+    const safe_ltv_bps = Math.floor(7500 - (random1 * 2000)); // 5500-7500 bps (55-75%)
     
     const mockTaskId = `0x${Math.random().toString(16).substring(2).padEnd(64, '0')}`;
     
     const results = {
-      var_95: Math.round(var_95),
-      var_99: Math.round(var_99),
+      var_95_bps: var_95_bps,
+      var_99_bps: var_99_bps,
       safe_ltv_bps: safe_ltv_bps,
       confidence_score: 0.95,
       monte_carlo_iterations: 5000,
@@ -74,8 +75,8 @@ export async function POST(req: NextRequest) {
     };
 
     console.log('[API] ✅ VaR Computation Complete:');
-    console.log('[API]    95% VaR:', results.var_95);
-    console.log('[API]    99% VaR:', results.var_99);
+    console.log('[API]    95% VaR:', results.var_95_bps, 'bps (' + (results.var_95_bps / 100).toFixed(1) + '%)');
+    console.log('[API]    99% VaR:', results.var_99_bps, 'bps');
     console.log('[API]    Safe LTV:', results.safe_ltv_bps / 100, '%');
     console.log('[API] 📝 Note: Using deterministic simulation. Real TEE requires SCONE framework setup.');
 

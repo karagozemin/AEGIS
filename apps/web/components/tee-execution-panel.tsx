@@ -110,10 +110,12 @@ export function TEEExecutionPanel({ assets, onComputeComplete }: TEEExecutionPan
         // Simulate attestation verification delay
         await new Promise(r => setTimeout(r, 800));
 
-        // Parse the TEE result
+        // Parse the TEE result — values are in basis points
         const computedResult = result as any;
-        const varScore = computedResult?.var_95 || computedResult?.results?.[0]?.var_95 || asset.value * 0.15;
+        const varBps = computedResult?.var_95_bps || computedResult?.results?.[0]?.var_95_bps || 1500;
         const safeLTV = computedResult?.safe_ltv_bps || computedResult?.results?.[0]?.safe_ltv_bps || 7500;
+        // Convert VaR BPS to dollar amount for display
+        const varScore = Math.round((varBps / 10000) * asset.value);
 
         setProgress(((i * STEPS_PER_ASSET + 3) / (protectedAssets.length * STEPS_PER_ASSET)) * 100);
 
@@ -125,8 +127,8 @@ export function TEEExecutionPanel({ assets, onComputeComplete }: TEEExecutionPan
         let explorerUrl: string | undefined;
 
         try {
-          // Convert VaR dollar amount to basis points relative to asset value
-          const varBps = Math.min(Math.round((varScore / asset.value) * 10000), 10000);
+          // VaR is already in BPS, cap at 9500 for safety
+          const varBpsCapped = Math.min(varBps, 9500);
           
           if (gaslessMode && isGaslessEnabled) {
             // ── Gasless path: submit directly from Smart Account via Pimlico ──
@@ -144,7 +146,7 @@ export function TEEExecutionPanel({ assets, onComputeComplete }: TEEExecutionPan
               args: [
                 address!, // owner (connected wallet)
                 assetIdBytes32,
-                BigInt(varBps),
+                BigInt(varBpsCapped),
                 BigInt(safeLTV),
                 taskIdBytes32,
                 BigInt(5000), // iterations
@@ -171,7 +173,7 @@ export function TEEExecutionPanel({ assets, onComputeComplete }: TEEExecutionPan
               args: [
                 address!, // owner = connected wallet
                 assetIdBytes32,
-                BigInt(varBps),
+                BigInt(varBpsCapped),
                 BigInt(safeLTV),
                 taskIdBytes32,
                 BigInt(5000), // iterations
