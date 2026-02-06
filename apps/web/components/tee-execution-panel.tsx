@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Cpu, Zap, Shield, CheckCircle, AlertCircle, Loader2, Wallet, ExternalLink } from "lucide-react";
-import { useAccount, useWriteContract, usePublicClient } from "wagmi";
+import { useAccount, useWriteContract, usePublicClient, useSwitchChain } from "wagmi";
 import { arbitrumSepolia } from "wagmi/chains";
 import { Button } from "@/components/ui/button";
 import {
@@ -47,10 +47,11 @@ export function TEEExecutionPanel({ assets, onComputeComplete }: TEEExecutionPan
   const [gaslessMode, setGaslessMode] = useState(false);
   const [lastTxHash, setLastTxHash] = useState<string | null>(null);
 
-  const { address } = useAccount();
+  const { address, chainId } = useAccount();
   const { grantAccess, processData, isReady } = useDataProtector();
   const { writeContractAsync } = useWriteContract();
   const publicClient = usePublicClient({ chainId: arbitrumSepolia.id });
+  const { switchChainAsync } = useSwitchChain();
   const { 
     isGaslessEnabled, 
     smartAccountAddress, 
@@ -135,9 +136,8 @@ export function TEEExecutionPanel({ assets, onComputeComplete }: TEEExecutionPan
             console.log('[TEE] 🔄 Submitting via Pimlico Smart Account (gasless)...');
             
             const assetIdBytes32 = keccak256(toBytes(asset.id));
-            const taskIdBytes32 = taskId.startsWith('0x') && taskId.length === 66
-              ? taskId as `0x${string}`
-              : keccak256(toBytes(taskId));
+            // Always hash taskId to get consistent bytes32
+            const taskIdBytes32 = keccak256(toBytes(taskId));
 
             const result = await sendGaslessTransaction({
               to: AEGIS_RISK_MANAGER_ADDRESS,
@@ -161,10 +161,15 @@ export function TEEExecutionPanel({ assets, onComputeComplete }: TEEExecutionPan
             // ── Standard path: submit directly from connected wallet ──
             console.log('[TEE] 🔄 Waiting for wallet approval...');
             
+            // Ensure we're on Arbitrum Sepolia (DataProtector may have switched to Bellecour)
+            if (chainId !== arbitrumSepolia.id) {
+              console.log('[TEE] 🔀 Switching to Arbitrum Sepolia...');
+              await switchChainAsync({ chainId: arbitrumSepolia.id });
+            }
+
             const assetIdBytes32 = keccak256(toBytes(asset.id));
-            const taskIdBytes32 = taskId.startsWith('0x') && taskId.length === 66
-              ? taskId as `0x${string}`
-              : keccak256(toBytes(taskId));
+            // Always hash taskId to get consistent bytes32
+            const taskIdBytes32 = keccak256(toBytes(taskId));
 
             const txHash_ = await writeContractAsync({
               address: AEGIS_RISK_MANAGER_ADDRESS,
