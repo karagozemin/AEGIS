@@ -761,6 +761,43 @@ Building Aegis Prime with iExec was a pleasure. The tools are mature, the docume
 
 ---
 
+## 🏔️ Engineering Post-Mortem: Obstacles & Solutions
+
+### 1. SCONE Framework — Apple Silicon (M4) Incompatibility
+
+**The Blocker:** SCONE's sconification toolchain requires an x86_64 Linux environment with SGX support. Our primary development machines (MacBook M4) cannot run SCONE containers natively. Cross-compilation via Docker also failed because SCONE's base images are x86-only.
+
+**What We Built Anyway:**
+- A production-ready Python TEE app (`tee-app/aegis-var-calculator/`) with correct Monte Carlo VaR implementation
+- A Docker image built and pushed to Docker Hub, structured for `/iexec_in` → `/iexec_out` iExec compatibility
+- A deterministic simulation backend that produces mathematically valid VaR/LTV values in realistic ranges (500–2500 bps VaR, 5500–7500 bps Safe LTV)
+
+**Our Ask to iExec:** ARM64/Apple Silicon SCONE support or a cloud-based sconification service would dramatically lower the barrier for hackathon participants.
+
+### 2. Pimlico Account Abstraction — msg.sender Mismatch
+
+**The Problem:** When submitting risk scores via a Pimlico Smart Account, the `msg.sender` is the Smart Account address, not the user's EOA. Our contract's `onlyTEEOrOwner(owner)` modifier requires `msg.sender == owner || msg.sender == teeOracle`. Since Smart Account ≠ EOA, the call reverts.
+
+**Our Solution:** Gasless mode routes submissions through the backend TEE oracle (which IS the `teeOracle` on the contract), while keeping the user's EOA as the `owner` parameter. This ensures:
+- Risk scores map correctly to the user's wallet address
+- On-chain verified badges work via `useIsScoreValid(assetId)` with the EOA
+- No contract modification needed
+
+**The Tradeoff:** This is technically a centralized relay, not a true ERC-4337 gasless flow. In production, we'd add the Smart Account address to an allowlist on the contract.
+
+### 3. MetaMask Gas Estimation — Silent Revert on Arbitrum Sepolia
+
+**The Bug:** `writeContractAsync` (wagmi) triggers MetaMask's `eth_estimateGas`, which failed with "Internal JSON-RPC error" even though the identical call succeeded via `cast call` and `cast send`.
+
+**Root Cause:** MetaMask's default gas price on Arbitrum Sepolia is 0.02 gwei — too low for the network. The gas estimation call itself reverted because of insufficient fee.
+
+**Our Fix (3-layer):**
+1. `encodeFunctionData()` + `walletClient.sendTransaction()` — bypasses wagmi's writeContract flow
+2. Explicit `gas: 500_000n`, `maxFeePerGas: 0.1 gwei`, `maxPriorityFeePerGas: 0.1 gwei`
+3. Automatic backend oracle fallback if wallet TX still fails
+
+---
+
 ---
 
 **Contact:**

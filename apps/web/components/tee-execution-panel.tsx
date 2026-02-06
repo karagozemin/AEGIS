@@ -383,6 +383,9 @@ export function TEEExecutionPanel({ assets, onComputeComplete }: TEEExecutionPan
                     {smartAccountAddress.slice(0, 6)}...{smartAccountAddress.slice(-4)}
                   </a>
                 </p>
+                <p className="text-[10px] text-aegis-steel-500 mt-1">
+                  ⛽ Gas sponsored by Aegis Oracle · Score mapped to your wallet
+                </p>
               </div>
             )}
           </div>

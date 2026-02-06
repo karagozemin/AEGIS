@@ -246,7 +246,20 @@ export function RiskScoreCard({ asset, onDelete }: RiskScoreCardProps) {
               </Button>
               {mailStatus === "sent" && (
                 <p className="text-[10px] text-green-400/60 mt-1 text-center">
-                  📧 Web3Mail report queued via iExec
+                  📧 Report queued! Ensure you have opted-in on iExec Web3Mail
+                </p>
+              )}
+              {mailStatus === "idle" && (
+                <p className="text-[10px] text-aegis-steel-500 mt-1 text-center">
+                  To receive encrypted emails,{" "}
+                  <a
+                    href="https://web3mail.iex.ec/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-aegis-cyan hover:underline"
+                  >
+                    opt-in at web3mail.iex.ec
+                  </a>
                 </p>
               )}
             </div>

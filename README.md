@@ -579,7 +579,7 @@ uint256 public constant SCORE_EXPIRY = 7 days;
 
 | Component | Address | Explorer |
 |-----------|---------|----------|
-| **AegisRiskManager** | `0x253178656C31B5B67704e7Dd8ad604a6e89a1d2f` | [View](https://sepolia.arbiscan.io/address/0x253178656C31B5B67704e7Dd8ad604a6e89a1d2f) |
+| **AegisRiskManager** | `0xaE37446b0e680E524A41D21C41206Cd4d5d03E0C` | [View](https://sepolia.arbiscan.io/address/0xaE37446b0e680E524A41D21C41206Cd4d5d03E0C) |
 | **iExec TEE App** | `0x1378174Dffc1Df753799206ABdbc5843A0335890` | [iExec Explorer](https://explorer.iex.ec/arbitrum-sepolia-testnet/app/0x1378174Dffc1Df753799206ABdbc5843A0335890) |
 
 ### iExec Bellecour
