@@ -132,31 +132,37 @@ export function TEEExecutionPanel({ assets, onComputeComplete }: TEEExecutionPan
           const varBpsCapped = Math.min(varBps, 9500);
           
           if (gaslessMode && isGaslessEnabled) {
-            // ── Gasless path: submit directly from Smart Account via Pimlico ──
-            console.log('[TEE] 🔄 Submitting via Pimlico Smart Account (gasless)...');
-            
-            const assetIdBytes32 = keccak256(toBytes(asset.id));
-            // Always hash taskId to get consistent bytes32
-            const taskIdBytes32 = keccak256(toBytes(taskId));
+            // ── Gasless path: submit via backend TEE oracle (sponsored by Pimlico) ──
+            // Smart Account msg.sender ≠ EOA address, so contract's onlyTEEOrOwner
+            // would revert. Instead, route through backend oracle (which IS teeOracle)
+            // while keeping the EOA as the owner for correct on-chain score mapping.
+            console.log('[TEE] 🔄 Submitting gasless via backend TEE oracle...');
+            console.log('[TEE] 📋 Owner (EOA):', address);
+            console.log('[TEE] 📋 Smart Account:', smartAccountAddress);
 
-            const result = await sendGaslessTransaction({
-              to: AEGIS_RISK_MANAGER_ADDRESS,
-              abi: AEGIS_RISK_MANAGER_ABI as any,
-              functionName: 'submitRiskScore',
-              args: [
-                address!, // owner (connected wallet)
-                assetIdBytes32,
-                BigInt(varBpsCapped),
-                BigInt(safeLTV),
-                taskIdBytes32,
-                BigInt(5000), // iterations
-              ],
+            const resp = await fetch('/api/iexec/submit-score', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                ownerAddress: address, // EOA address — maps scores to user's wallet
+                assetId: asset.id,
+                varScore: varBpsCapped,
+                safeLTV,
+                taskId,
+                iterations: 5000,
+              }),
             });
 
-            txHash = result.receipt.transactionHash;
-            explorerUrl = `https://sepolia.arbiscan.io/tx/${txHash}`;
-            setLastTxHash(txHash);
-            console.log('[TEE] ✅ Gasless tx confirmed:', txHash);
+            if (!resp.ok) {
+              const errData = await resp.json().catch(() => ({}));
+              throw new Error(errData.error || `Gasless submission failed (${resp.status})`);
+            }
+
+            const result = await resp.json();
+            txHash = result.txHash;
+            explorerUrl = result.explorerUrl || `https://sepolia.arbiscan.io/tx/${txHash}`;
+            setLastTxHash(txHash!);
+            console.log('[TEE] ✅ Gasless tx confirmed via oracle:', txHash);
           } else {
             // ── Standard path: wallet sendTransaction (bypass gas estimation) ──
             // Then fallback to backend oracle if wallet fails
