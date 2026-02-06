@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
 import { Shield, Plus, RefreshCw, ExternalLink, CheckCircle, Clock, AlertTriangle } from "lucide-react";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
@@ -8,6 +9,8 @@ import { useAccount } from "wagmi";
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
+
+const DarkVeil = dynamic(() => import("@/components/DarkVeil"), { ssr: false });
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AssetProtectionForm } from "@/components/asset-protection-form";
 import { RiskScoreCard } from "@/components/risk-score-card";
@@ -169,7 +172,11 @@ export default function DashboardPage() {
   if (!isConnected) {
     return (
       <main className="min-h-screen bg-gradient-industrial">
-        <div className="fixed inset-0 bg-grid opacity-30 pointer-events-none" />
+        {/* DarkVeil WebGL background */}
+        <div className="fixed inset-0 z-0 pointer-events-none" style={{ width: '100%', height: '100%' }}>
+          <DarkVeil hueShift={0} noiseIntensity={0} scanlineIntensity={0} speed={1.5} scanlineFrequency={0} warpAmount={0} />
+        </div>
+        <div className="fixed inset-0 bg-aegis-steel-950/60 z-[1] pointer-events-none" />
         <div className="relative z-10 flex flex-col items-center justify-center min-h-screen">
           <Shield className="w-16 h-16 text-aegis-cyan mb-6" />
           <h1 className="text-2xl font-bold mb-4">Connect Your Wallet</h1>
@@ -184,10 +191,14 @@ export default function DashboardPage() {
 
   return (
     <main className="min-h-screen bg-gradient-industrial">
-      <div className="fixed inset-0 bg-grid opacity-30 pointer-events-none" />
+      {/* DarkVeil WebGL background */}
+      <div className="fixed inset-0 z-0 pointer-events-none" style={{ width: '100%', height: '100%' }}>
+        <DarkVeil hueShift={0} noiseIntensity={0} scanlineIntensity={0} speed={1.5} scanlineFrequency={0} warpAmount={0} />
+      </div>
+      <div className="fixed inset-0 bg-aegis-steel-950/60 z-[1] pointer-events-none" />
 
       {/* Navigation */}
-      <nav className="z-10 border-b border-aegis-steel-800 sticky top-0 bg-aegis-steel-950/80 backdrop-blur-sm">
+      <nav className="z-20 border-b border-aegis-steel-800 sticky top-0 bg-aegis-steel-950/80 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3 group">
             <Image
