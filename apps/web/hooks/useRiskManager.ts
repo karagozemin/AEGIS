@@ -128,13 +128,14 @@ export function useIsScoreValid(assetId: string) {
 
   const assetIdBytes32 = keccak256(toBytes(assetId));
 
-  const { data, isLoading, error } = useReadContract({
+  const { data, isLoading, error, refetch } = useReadContract({
     address: AEGIS_RISK_MANAGER_ADDRESS,
     abi: AEGIS_RISK_MANAGER_ABI,
     functionName: "isScoreValid",
     args: address ? [address, assetIdBytes32] : undefined,
     query: {
       enabled: !!address && !!AEGIS_RISK_MANAGER_ADDRESS,
+      refetchInterval: 10_000, // refresh every 10s to catch new submissions
     },
   });
 
@@ -142,6 +143,7 @@ export function useIsScoreValid(assetId: string) {
     isValid: data as boolean | undefined,
     isLoading,
     error,
+    refetch,
   };
 }
 

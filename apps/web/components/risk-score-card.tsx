@@ -128,7 +128,7 @@ export function RiskScoreCard({ asset, onDelete }: RiskScoreCardProps) {
             )}
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
-            <StatusBadge status={asset.status} onChainValid={onChainValid} />
+            <StatusBadge status={asset.status} onChainValid={onChainValid} isLoading={isValidLoading} />
             {onDelete && (
               <button
                 onClick={(e) => { e.stopPropagation(); onDelete(); }}
@@ -297,10 +297,19 @@ export function RiskScoreCard({ asset, onDelete }: RiskScoreCardProps) {
   );
 }
 
-function StatusBadge({ status, onChainValid }: { status: Asset["status"]; onChainValid?: boolean }) {
+function StatusBadge({ status, onChainValid, isLoading }: { status: Asset["status"]; onChainValid?: boolean; isLoading?: boolean }) {
   switch (status) {
     case "computed":
-      // If we have on-chain validity data, show accordingly
+      // Still loading on-chain data → show Verified (optimistic)
+      if (isLoading || onChainValid === undefined) {
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-green-500/10 text-green-400 text-xs">
+            <CheckCircle className="w-3 h-3" />
+            Verified
+          </span>
+        );
+      }
+      // Explicitly false from contract → expired
       if (onChainValid === false) {
         return (
           <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-aegis-amber/10 text-aegis-amber text-xs">
