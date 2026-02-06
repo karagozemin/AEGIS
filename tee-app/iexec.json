@@ -10,12 +10,9 @@
   "buyConf": {},
   "app": {
     "owner": "0x1CAE430c28ADf99f6404FaB05E3B34363D8d6e6d",
-    "name": "aegis-var-engine-tdx",
+    "name": "aegis-var-engine",
     "type": "DOCKER",
     "multiaddr": "registry.hub.docker.com/karagozemin/aegis-var-engine:1.0.0",
-    "checksum": "0x85d77ad97615c8e0df6a4032561dd6404329487d8bea724e2331679049e35b05",
-    "mrenclave": {
-      "framework": "TDX"
-    }
+    "checksum": "0x85d77ad97615c8e0df6a4032561dd6404329487d8bea724e2331679049e35b05"
   }
 }
