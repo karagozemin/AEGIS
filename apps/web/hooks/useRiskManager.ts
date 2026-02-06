@@ -135,7 +135,7 @@ export function useIsScoreValid(assetId: string) {
     args: address ? [address, assetIdBytes32] : undefined,
     query: {
       enabled: !!address && !!AEGIS_RISK_MANAGER_ADDRESS,
-      refetchInterval: 10_000, // refresh every 10s to catch new submissions
+      refetchInterval: 3_000, // refresh every 3s to catch new submissions quickly
     },
   });
 

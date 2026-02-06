@@ -300,8 +300,8 @@ export function RiskScoreCard({ asset, onDelete }: RiskScoreCardProps) {
 function StatusBadge({ status, onChainValid, isLoading }: { status: Asset["status"]; onChainValid?: boolean; isLoading?: boolean }) {
   switch (status) {
     case "computed":
-      // Still loading on-chain data → show Verified (optimistic)
-      if (isLoading || onChainValid === undefined) {
+      // On-chain confirmed valid
+      if (onChainValid === true) {
         return (
           <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-green-500/10 text-green-400 text-xs">
             <CheckCircle className="w-3 h-3" />
@@ -309,19 +309,11 @@ function StatusBadge({ status, onChainValid, isLoading }: { status: Asset["statu
           </span>
         );
       }
-      // Explicitly false from contract → expired
-      if (onChainValid === false) {
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-aegis-amber/10 text-aegis-amber text-xs">
-            <Clock className="w-3 h-3" />
-            Expired
-          </span>
-        );
-      }
+      // Still loading or waiting for on-chain confirmation → show progress
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-green-500/10 text-green-400 text-xs">
-          <CheckCircle className="w-3 h-3" />
-          Verified
+        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-aegis-cyan/10 text-aegis-cyan text-xs">
+          <Loader2 className="w-3 h-3 animate-spin" />
+          Verifying
         </span>
       );
     case "computing":
