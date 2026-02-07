@@ -104,7 +104,7 @@ Aegis Prime is a **Confidential RWA Risk Engine** built for the iExec Hack4Priva
 │                                                                 │
 │  ┌──────────────────────────────────────────────────────────┐  │
 │  │         AegisRiskManager Smart Contract                  │  │
-│  │         Address: 0x253178656c31b5b67704e7dd8ad604a6...   │  │
+│  │         Address: 0xaE37446b0e680E524A41D21C41206Cd4...   │  │
 │  │                                                           │  │
 │  │  • submitRiskScore(asset, varScore, safeLTV, taskId)     │  │
 │  │  • submitBulkRiskScores(scores[], taskId)                │  │
@@ -343,7 +343,7 @@ def calculate_var(value, volatility, confidence=0.95, iterations=5000):
 
 ### AegisRiskManager.sol
 
-**Address:** `0x253178656c31b5b67704e7dd8ad604a6e89a1d2f` (Arbitrum Sepolia)
+**Address:** `0xaE37446b0e680E524A41D21C41206Cd4d5d03E0C` (Arbitrum Sepolia)
 
 #### Core Functions
 

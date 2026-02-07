@@ -161,7 +161,7 @@ iExec's confidential computing is ideal for RWA risk assessment, and here's why:
 - ✅ Confidential VaR computation (95% confidence interval)
 - ✅ Safe LTV (Loan-to-Value) ratio derivation for lending protocols
 - ✅ Encrypted asset data on IPFS with on-chain registry
-- ✅ Smart contract integration (Arbitrum Sepolia: `0x253178656C31B5B67704e7Dd8ad604a6e89a1d2f`)
+- ✅ Smart contract integration (Arbitrum Sepolia: `0xaE37446b0e680E524A41D21C41206Cd4d5d03E0C`)
 - ✅ Bulk processing (multiple assets in one TEE task)
 - ✅ Gasless transactions via Account Abstraction
 
@@ -702,7 +702,7 @@ We are **fully transparent** about this limitation:
 
 ## 📊 Project Stats
 
-- **Smart Contract:** Deployed on Arbitrum Sepolia (`0x253178656C31B5B67704e7Dd8ad604a6e89a1d2f`)
+- **Smart Contract:** Deployed on Arbitrum Sepolia (`0xaE37446b0e680E524A41D21C41206Cd4d5d03E0C`)
 - **iExec App:** Deployed on Arbitrum Sepolia & Bellecour
 - **Lines of Code:** ~3,500 (TypeScript + Solidity + Python)
 - **Documentation:** 1,605 lines (README + ARCHITECTURE + feedback)

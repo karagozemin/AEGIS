@@ -532,7 +532,7 @@ Process protected data in TEE and compute VaR.
 
 ### AegisRiskManager.sol
 
-**Address**: `0x253178656C31B5B67704e7Dd8ad604a6e89a1d2f` (Arbitrum Sepolia)
+**Address**: `0xaE37446b0e680E524A41D21C41206Cd4d5d03E0C` (Arbitrum Sepolia)
 
 #### Core Functions
 
